@@ -8,7 +8,7 @@ import (
 
 func TestNewPrefersDotConfigServiceDirectory(t *testing.T) {
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
@@ -19,7 +19,7 @@ func TestNewPrefersDotConfigServiceDirectory(t *testing.T) {
 		t.Fatalf("change directory: %v", err)
 	}
 
-	dotConfigDir := filepath.Join(workspace, ".config", "context-distill")
+	dotConfigDir := serviceConfigDirForTest(t, "context-distill")
 	if err = os.MkdirAll(dotConfigDir, 0o755); err != nil {
 		t.Fatalf("create dot config dir: %v", err)
 	}
@@ -41,16 +41,16 @@ func TestNewPrefersDotConfigServiceDirectory(t *testing.T) {
 
 	cfg := repo.DistillProviderConfig()
 	if cfg.Model != "from-dot-config" {
-		t.Fatalf("expected model from $HOME/.config/<service>, got %q", cfg.Model)
+		t.Fatalf("expected model from user config directory, got %q", cfg.Model)
 	}
 	if cfg.ProviderName != "openai-compatible" {
-		t.Fatalf("expected provider from $HOME/.config/<service>, got %q", cfg.ProviderName)
+		t.Fatalf("expected provider from user config directory, got %q", cfg.ProviderName)
 	}
 }
 
 func TestNewFallsBackToCurrentDirectoryConfig(t *testing.T) {
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)

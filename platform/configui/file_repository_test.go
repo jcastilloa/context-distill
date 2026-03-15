@@ -14,7 +14,7 @@ import (
 func TestFileRepositorySaveWritesConfigInServiceDirectory(t *testing.T) {
 	repo := NewFileRepository()
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
@@ -35,7 +35,7 @@ func TestFileRepositorySaveWritesConfigInServiceDirectory(t *testing.T) {
 		t.Fatalf("save settings: %v", err)
 	}
 
-	configPath := filepath.Join(workspace, ".config", "context-distill", "config.yaml")
+	configPath := serviceConfigFileForTest(t, "context-distill")
 	content, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatalf("read saved config: %v", err)
@@ -78,7 +78,7 @@ func TestFileRepositorySaveWritesConfigInServiceDirectory(t *testing.T) {
 func TestFileRepositorySavePreservesExistingConfigSections(t *testing.T) {
 	repo := NewFileRepository()
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
@@ -89,7 +89,7 @@ func TestFileRepositorySavePreservesExistingConfigSections(t *testing.T) {
 		t.Fatalf("change directory: %v", err)
 	}
 
-	targetDir := filepath.Join(workspace, ".config", "context-distill")
+	targetDir := serviceConfigDirForTest(t, "context-distill")
 	if err = os.MkdirAll(targetDir, 0o755); err != nil {
 		t.Fatalf("create target directory: %v", err)
 	}
@@ -134,7 +134,7 @@ distill:
 func TestFileRepositoryLoadReadsModel(t *testing.T) {
 	repo := NewFileRepository()
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
@@ -145,7 +145,7 @@ func TestFileRepositoryLoadReadsModel(t *testing.T) {
 		t.Fatalf("change directory: %v", err)
 	}
 
-	targetDir := filepath.Join(workspace, ".config", "context-distill")
+	targetDir := serviceConfigDirForTest(t, "context-distill")
 	if err = os.MkdirAll(targetDir, 0o755); err != nil {
 		t.Fatalf("create target directory: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestFileRepositoryLoadReadsModel(t *testing.T) {
 func TestFileRepositorySavePersistsModelUsedByConfigRepository(t *testing.T) {
 	repo := NewFileRepository()
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)

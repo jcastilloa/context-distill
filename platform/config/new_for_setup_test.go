@@ -8,7 +8,7 @@ import (
 
 func TestNewForSetupSkipsDistillValidation(t *testing.T) {
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)

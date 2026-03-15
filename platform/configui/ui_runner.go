@@ -30,13 +30,17 @@ func (r TViewRunner) Run(serviceName string) error {
 	if strings.TrimSpace(baseURL) == "" {
 		baseURL = selectedProvider.DefaultBaseURL
 	}
+	configFilePath := "the user configuration directory"
+	if resolvedPath, pathErr := configPath(serviceName); pathErr == nil {
+		configFilePath = resolvedPath
+	}
 
 	header := tview.NewTextView().
 		SetDynamicColors(true).
 		SetWrap(true).
 		SetText(
 			"[#7dd3fc::b]Context Distill MCP Config[-:-:-]\n" +
-				"[gray]Configuration is saved to ~/.config/" + serviceName + "/config.yaml",
+				"[gray]Configuration is saved to " + configFilePath,
 		)
 
 	statusView := tview.NewTextView().

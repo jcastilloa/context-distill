@@ -165,6 +165,8 @@ func newContainerFromViperConfig(t *testing.T, configYAML string, aiRepository a
 
 	workspace := t.TempDir()
 	t.Setenv("HOME", workspace)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("APPDATA", filepath.Join(workspace, "AppData", "Roaming"))
 	originalDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
@@ -177,7 +179,11 @@ func newContainerFromViperConfig(t *testing.T, configYAML string, aiRepository a
 		t.Fatalf("change directory: %v", err)
 	}
 
-	configDir := filepath.Join(workspace, ".config", "context-distill")
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("resolve user config directory: %v", err)
+	}
+	configDir := filepath.Join(userConfigDir, "context-distill")
 	if err = os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatalf("create config dir: %v", err)
 	}

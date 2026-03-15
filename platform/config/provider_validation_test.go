@@ -9,7 +9,7 @@ import (
 func TestNewReturnsErrorWhenOpenAICompatibleProviderHasNoBaseURL(t *testing.T) {
 	withIsolatedProviderEnv(t)
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir := mustGetwd(t)
 	defer func() { _ = os.Chdir(originalDir) }()
 	mustChdir(t, workspace)
@@ -27,7 +27,7 @@ func TestNewReturnsErrorWhenOpenAICompatibleProviderHasNoBaseURL(t *testing.T) {
 func TestNewReturnsErrorWhenOpenAIProviderHasNoAPIKey(t *testing.T) {
 	withIsolatedProviderEnv(t)
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir := mustGetwd(t)
 	defer func() { _ = os.Chdir(originalDir) }()
 	mustChdir(t, workspace)
@@ -46,7 +46,7 @@ func TestNewReturnsErrorWhenOpenAIProviderHasNoAPIKey(t *testing.T) {
 func TestNewAcceptsOpenAICompatibleProviderWithOpenAIFallbacks(t *testing.T) {
 	withIsolatedProviderEnv(t)
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir := mustGetwd(t)
 	defer func() { _ = os.Chdir(originalDir) }()
 	mustChdir(t, workspace)
@@ -66,7 +66,7 @@ distill:
 func TestNewRejectsUnsupportedDistillProvider(t *testing.T) {
 	withIsolatedProviderEnv(t)
 	workspace := t.TempDir()
-	t.Setenv("HOME", workspace)
+	configureUserConfigEnv(t, workspace)
 	originalDir := mustGetwd(t)
 	defer func() { _ = os.Chdir(originalDir) }()
 	mustChdir(t, workspace)

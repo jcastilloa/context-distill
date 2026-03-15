@@ -62,12 +62,12 @@ func newRepository(serviceName string, validate bool) (configDomain.Repository, 
 }
 
 func serviceHomeConfigDir(serviceName string) (string, bool) {
-	homeDir, err := os.UserHomeDir()
+	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", false
 	}
 
-	return filepath.Join(homeDir, ".config", serviceName), true
+	return filepath.Join(userConfigDir, serviceName), true
 }
 
 func (r *ViperRepository) OpenAIProviderConfig() aiDomain.ProviderConfig {

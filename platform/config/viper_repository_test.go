@@ -1,6 +1,8 @@
 package config
 
 import (
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -86,5 +88,40 @@ func TestDistillProviderConfigDoesNotForceOllamaModelForOpenAICompatibleProvider
 	}
 	if cfg.Model != "" {
 		t.Fatalf("expected empty model for openai-compatible provider when distill.model is not configured, got %q", cfg.Model)
+	}
+}
+
+func TestServiceHomeConfigDirUsesUserConfigDir(t *testing.T) {
+	workspace := t.TempDir()
+	configureUserConfigEnv(t, workspace)
+
+	got, ok := serviceHomeConfigDir("context-distill")
+	if !ok {
+		t.Fatalf("expected config directory to be resolved")
+	}
+
+	want := serviceConfigDirForTest(t, "context-distill")
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+}
+
+func TestServiceHomeConfigDirUsesDotConfigOnLinux(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("linux-only assertion")
+	}
+
+	workspace := t.TempDir()
+	t.Setenv("HOME", workspace)
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	got, ok := serviceHomeConfigDir("context-distill")
+	if !ok {
+		t.Fatalf("expected config directory to be resolved")
+	}
+
+	want := filepath.Join(workspace, ".config", "context-distill")
+	if got != want {
+		t.Fatalf("expected linux fallback path %q, got %q", want, got)
 	}
 }

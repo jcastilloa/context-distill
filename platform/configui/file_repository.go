@@ -92,12 +92,12 @@ func ensureDefaultServiceSection(cfg map[string]any) {
 }
 
 func configPath(serviceName string) (string, error) {
-	homeDir, err := os.UserHomeDir()
+	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
-		return "", fmt.Errorf("resolve user home directory: %w", err)
+		return "", fmt.Errorf("resolve user config directory: %w", err)
 	}
 
-	return filepath.Join(homeDir, ".config", serviceName, "config.yaml"), nil
+	return filepath.Join(userConfigDir, serviceName, "config.yaml"), nil
 }
 
 func readConfigMap(path string) (map[string]any, error) {
