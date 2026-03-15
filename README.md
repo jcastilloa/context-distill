@@ -1,79 +1,91 @@
 # context-distill
 
-A Go MCP server that **distills command output** before it is sent to another LLM, inspired by the `distill` CLI and implemented with hexagonal architecture, DI, and TDD.
+A Go MCP server that **distills command output** before it reaches a paid LLM. Inspired by the `distill` CLI and built with hexagonal architecture, dependency injection, and TDD.
 
 ## Overview
 
 `context-distill` exposes two MCP tools:
-- `distill_batch`: compresses full command output to answer a specific question.
-- `distill_watch`: compares two consecutive cycles and reports only relevant changes.
 
-It also includes:
-- LLM provider configuration via YAML/env.
-- Interactive terminal configuration UI with `tview`.
-- Support for `ollama` and OpenAI-compatible providers.
+| Tool | Purpose |
+|---|---|
+| `distill_batch` | Compresses full command output to answer a single, explicit question. |
+| `distill_watch` | Compares two consecutive snapshots and returns only the relevant delta. |
+
+It also provides:
+
+- LLM provider configuration via YAML and environment variables.
+- An interactive terminal UI for first-time setup (`--config-ui`).
+- Support for Ollama and any OpenAI-compatible provider.
 
 ## Features
 
-- Hexagonal architecture (`distill/domain`, `distill/application`, `platform/*`).
-- Dependency injection with `sarulabs/di`.
-- Config management with `viper` + `.env`.
-- Provider-specific config validation.
-- Interactive setup UI (`--config-ui`).
-- Unit/integration tests + optional live test.
+- **Hexagonal architecture** — `distill/domain`, `distill/application`, `platform/*`.
+- **Dependency injection** via `sarulabs/di`.
+- **Config management** with `viper` + `.env`.
+- **Provider-specific validation** at config time.
+- **Interactive setup UI** (`--config-ui`).
+- **Unit, integration, and optional live tests.**
 
 ## Requirements
 
-- Go `1.26+`
+- Go **1.26+**
 - Make (recommended)
 
-If you prefer, you can install from GitHub Releases without compiling (see next section).
+If you prefer not to compile, you can install a prebuilt binary from GitHub Releases (see below).
 
-## Install Without Compiling
+## Installation
 
-Install latest release binary:
-
-- Linux/macOS:
+### Option A: Build from source
 
 ```bash
+make build
+```
+
+The binary is placed at `./bin/context-distill`.
+
+To install it into your PATH:
+
+```bash
+make install
+# installs to ~/.local/bin/context-distill
+```
+
+### Option B: Prebuilt binary (no build required)
+
+**Linux / macOS:**
+
+```bash
+# Latest release
 curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | sh
-```
 
-- Windows (PowerShell):
-
-```powershell
-iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
-```
-
-Install a specific version:
-
-- Linux/macOS:
-
-```bash
+# Specific version
 curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | VERSION=vX.Y.Z sh
 ```
 
-- Windows (PowerShell):
+**Windows (PowerShell):**
 
 ```powershell
+# Latest release
+iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
+
+# Specific version
 $env:VERSION='vX.Y.Z'; iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
 ```
 
-Optional environment variables:
-- `REPO` (default: `jcastilloa/context-distill`)
-- `SERVICE_NAME` (default: `context-distill`)
-- `INSTALL_DIR` (default Linux/macOS: `~/.local/bin`, Windows: `%LOCALAPPDATA%\context-distill\bin`)
-- `VERSION` (default: latest release tag)
+**Installer environment variables:**
 
-## Makefile
+| Variable | Default |
+|---|---|
+| `REPO` | `jcastilloa/context-distill` |
+| `SERVICE_NAME` | `context-distill` |
+| `INSTALL_DIR` | `~/.local/bin` (Linux/macOS) · `%LOCALAPPDATA%\context-distill\bin` (Windows) |
+| `VERSION` | Latest release tag |
 
-This repository already ships with a `Makefile`:
+## Makefile Targets
 
 ```bash
 make help
 ```
-
-### Available targets
 
 | Target | Description |
 |---|---|
@@ -85,75 +97,41 @@ make help
 
 ```bash
 make build
-./bin/context-distill --config-ui
-./bin/context-distill --transport stdio
+./bin/context-distill --config-ui      # interactive provider setup
+./bin/context-distill --transport stdio # start the MCP server
 ```
 
-That is enough to build, configure, and start the MCP server.
+That is all you need to build, configure, and run the server.
 
-## MCP Installation
+## MCP Client Registration
 
-### 1. Build
+After building or installing the binary, register it in your MCP client.
 
-```bash
-make build
-```
-
-Output:
-- `./bin/context-distill`
-
-### 1b. Or install a prebuilt binary (no build)
-
-- Linux/macOS:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | sh
-```
-
-- Windows (PowerShell):
-
-```powershell
-iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
-```
-
-### 2. (Optional) Install to local PATH
-
-```bash
-make install
-```
-
-Output:
-- `~/.local/bin/context-distill`
-
-### 3. Register in your MCP client
-
-#### Option A: JSON `mcpServers` clients
-
-If your client uses a JSON file with `mcpServers`, add:
+### JSON-based clients (Claude Desktop, Cursor, etc.)
 
 ```json
 {
   "mcpServers": {
     "context-distill": {
-      "command": "/absolute/path/to/context-distill/bin/context-distill",
+      "command": "/absolute/path/to/context-distill",
       "args": ["--transport", "stdio"]
     }
   }
 }
 ```
 
-#### Option B: Codex (`~/.codex/config.toml`) - recommended
+### Codex — manual TOML (recommended)
 
-Add this block to `~/.codex/config.toml`:
+Add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.context-distill]
-command = "/absolute/path/to/context-distill/bin/context-distill"
+command = "/absolute/path/to/context-distill"
 args = ["--transport", "stdio"]
 startup_timeout_sec = 20.0
 ```
 
-If you used `make install`, you can use:
+If you used `make install`:
 
 ```toml
 [mcp_servers.context-distill]
@@ -162,46 +140,43 @@ args = ["--transport", "stdio"]
 startup_timeout_sec = 20.0
 ```
 
-#### Option C: Codex CLI registration (no manual TOML edit)
+### Codex — CLI registration
 
 ```bash
-codex mcp add context-distill -- /absolute/path/to/context-distill/bin/context-distill --transport stdio
+codex mcp add context-distill -- /absolute/path/to/context-distill --transport stdio
 ```
 
-Verify in Codex:
+Verify:
 
 ```bash
 codex mcp list
 codex mcp get context-distill
 ```
 
-Then restart your Codex session so it reloads MCP servers.
+Restart your Codex session so it picks up the new server.
 
-#### Option D: OpenCode CLI registration (`opencode mcp add`)
-
-Run:
+### OpenCode — interactive CLI
 
 ```bash
 opencode mcp add
 ```
 
-Then follow the prompts:
-1. `Location`: choose `Current project` or `Global`.
-2. `Enter MCP server name`: `context-distill`.
-3. `Select MCP server type`: `local`.
-4. `Enter command to run`: `/absolute/path/to/context-distill --transport stdio`.
+Follow the prompts:
 
-Verify in OpenCode:
+1. **Location** → `Current project` or `Global`.
+2. **Name** → `context-distill`.
+3. **Type** → `local`.
+4. **Command** → `/absolute/path/to/context-distill --transport stdio`.
+
+Verify:
 
 ```bash
 opencode mcp list
 ```
 
-If it is not connected yet, restart your OpenCode session.
+If the server is not connected yet, restart your OpenCode session.
 
-#### Option E: OpenCode manual config (`opencode.json`)
-
-You can also add it manually in `opencode.json`:
+### OpenCode — manual config (`opencode.json`)
 
 ```json
 {
@@ -216,23 +191,15 @@ You can also add it manually in `opencode.json`:
 }
 ```
 
-Then run:
+### Registration notes
 
-```bash
-opencode mcp list
-```
+- Always use an **absolute** binary path.
+- Always use `stdio` transport.
+- If the server does not appear, run `codex mcp list --json` to inspect the resolved config.
 
-### MCP registration notes
+## Configuration
 
-- Use an absolute binary path.
-- Keep `stdio` transport.
-- If the server does not appear, run `codex mcp list --json` to inspect final config.
-
-## MCP Configuration via Terminal UI
-
-The UI is designed for fast local setup and persistence.
-
-### Launch UI
+### Terminal UI (recommended for first-time setup)
 
 ```bash
 ./bin/context-distill --config-ui
@@ -240,36 +207,34 @@ The UI is designed for fast local setup and persistence.
 go run ./cmd/server --config-ui
 ```
 
-### Editable fields
+**Editable fields:**
 
-- `provider_name` (dropdown list)
-- `base_url`
-- `api_key` (masked input)
+| Field | Notes |
+|---|---|
+| `provider_name` | Dropdown list of supported providers. |
+| `base_url` | Required for OpenAI-compatible providers. |
+| `api_key` | Masked input. Required for `openai`, `openrouter`, `jan`. |
 
-### UI validation rules
+**Validation rules:**
 
-- If provider requires API key (`openai`, `openrouter`, `jan`), save is blocked without key.
-- If provider is OpenAI-compatible, `base_url` is required.
-- Provider aliases are normalized (`OpenAI Compatible` -> `openai-compatible`, `dmr` -> `docker-model-runner`).
+- Providers that require an API key block save until one is entered.
+- OpenAI-compatible providers require a `base_url`.
+- Provider aliases are normalized automatically (e.g. `OpenAI Compatible` → `openai-compatible`, `dmr` → `docker-model-runner`).
 
-### Persisted config path
+**Persisted config path:** `~/.config/context-distill/config.yaml`
 
-- `~/.config/context-distill/config.yaml`
+Save preserves existing YAML sections (`service`, `openai`, etc.) and updates only the relevant `distill` fields.
 
-Save behavior:
-- Preserves existing YAML sections (`service`, `openai`, etc.).
-- Updates only relevant `distill` fields.
+### Manual YAML configuration
 
-## Manual Configuration (YAML)
+You can also edit the config file directly.
 
-You can also edit config manually.
-
-### Config lookup order
+**Lookup order:**
 
 1. `~/.config/<service>/config.yaml`
 2. `./config.yaml`
 
-### Example `config.yaml`
+**Example `config.yaml`:**
 
 ```yaml
 service:
@@ -294,8 +259,7 @@ distill:
   thinking: false
 ```
 
-Note:
-- `service.version` is injected at build time from the binary metadata and does not need to be configured manually.
+> **Note:** `service.version` is injected at build time from binary metadata and does not need to be set manually.
 
 ## Provider Matrix
 
@@ -304,19 +268,17 @@ Note:
 | `ollama` | native ollama | No | `http://127.0.0.1:11434` |
 | `openai` | openai-compatible | Yes | `https://api.openai.com/v1` |
 | `openrouter` | openai-compatible | Yes | `https://openrouter.ai/api/v1` |
-| `openai-compatible` | openai-compatible | No (backend-dependent) | no forced default |
+| `openai-compatible` | openai-compatible | No (backend-dependent) | — |
 | `lmstudio` | openai-compatible | No | `http://127.0.0.1:1234/v1` |
 | `jan` | openai-compatible | Yes | `http://127.0.0.1:1337/v1` |
 | `localai` | openai-compatible | No | `http://127.0.0.1:8080/v1` |
 | `vllm` | openai-compatible | No | `http://127.0.0.1:8000/v1` |
-| `sglang` | openai-compatible | No | no forced default |
-| `llama.cpp` | openai-compatible | No | no forced default |
-| `mlx-lm` | openai-compatible | No | no forced default |
+| `sglang` | openai-compatible | No | — |
+| `llama.cpp` | openai-compatible | No | — |
+| `mlx-lm` | openai-compatible | No | — |
 | `docker-model-runner` | openai-compatible | No | `http://127.0.0.1:12434/engines/v1` |
 
-## Running the MCP Server
-
-### Run locally
+## Running the Server
 
 ```bash
 ./bin/context-distill --transport stdio
@@ -330,139 +292,130 @@ go run ./cmd/server --transport stdio
 go run ./cmd/server version
 ```
 
-### CLI flags
+### CLI Flags
 
 | Flag | Description | Default |
 |---|---|---|
-| `--transport` | MCP transport (`stdio`) | `service.transport` |
+| `--transport` | MCP transport mode (`stdio`) | `service.transport` |
 | `--config-ui` | Open setup UI and exit | `false` |
 
-## MCP Tools
+## MCP Tools Reference
 
-### Tool: `distill_batch`
+### `distill_batch`
 
-Input:
-- `question` (string, required)
-- `input` (string, required)
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `question` | string | yes | What to extract from the input. Must include an output contract. |
+| `input` | string | yes | Raw command output to distill. |
 
-Output:
-- Short distilled answer focused on `question`.
+Returns a short, focused answer to `question`.
 
-### Tool: `distill_watch`
+### `distill_watch`
 
-Input:
-- `question` (string, required)
-- `previous_cycle` (string, required)
-- `current_cycle` (string, required)
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `question` | string | yes | What delta to report. Must include an output contract. |
+| `previous_cycle` | string | yes | Snapshot from the previous cycle. |
+| `current_cycle` | string | yes | Snapshot from the current cycle. |
 
-Output:
-- Short summary of relevant changes.
-- Returns no-change message when nothing relevant changed.
+Returns a short summary of relevant changes, or a no-change message when nothing meaningful differs.
 
-## Concrete Usage Guidance (Important)
+## Writing Good Questions
 
-To get high-quality distillation, the `question` must be explicit and constrained.
+The quality of the distillation depends entirely on the `question`. Be explicit about **what** you want and **in what format**.
 
-### Good vs bad `question`
+### Bad questions
 
-Bad:
 - `"What happened?"`
 - `"Summarize this"`
 
-Good:
-- `"Did tests pass? Return only PASS or FAIL, then failing test names if FAIL."`
-- `"List only files that changed. One file path per line."`
+### Good questions
+
+- `"Did tests pass? Return only PASS or FAIL. If FAIL, list failing test names, one per line."`
+- `"List only changed file paths, one per line."`
 - `"Return valid JSON only with keys: severity, file, message."`
-
-### Practical examples for `distill_batch`
-
-- Input source: `go test ./...` output.
-  Question: `"Did tests pass? Return only PASS or FAIL."`
-- Input source: `git diff` output.
-  Question: `"List changed files and one short reason per file. Max 10 lines."`
-- Input source: CI logs.
-  Question: `"Return only blocking errors with file and line if available."`
-
-### Practical examples for `distill_watch`
-
-- Previous cycle: test watcher output at T-1.
-- Current cycle: test watcher output at T.
-  Question: `"What changed in failures count? Return one short sentence."`
-
-- Previous cycle: deployment status snapshot.
-- Current cycle: deployment status snapshot.
-  Question: `"Return only newly failing services. One per line."`
-
-## AGENTS.md Template For Projects Using This MCP
-
-Add a section like this in the consumer project’s `AGENTS.md`.
-The goal is to make usage consistent: explicit questions, explicit output contracts, and clear rules for when to distill vs when to keep raw output.
-
-```md
-## context-distill MCP Usage
-
-CRITICAL: When command output is large and would otherwise be sent to a paid LLM, call `distill_batch` first.
-
-CRITICAL: The `question` must be explicit about output format.
-Examples:
-- "Return only PASS or FAIL."
-- "Return valid JSON only."
-- "Return only filenames, one per line."
-
-CRITICAL: For recurring/watch-like command output, compare cycles with `distill_watch`:
-- `previous_cycle`: prior snapshot
-- `current_cycle`: latest snapshot
-- ask only for relevant deltas
-
-Do not use raw output unless exact uncompressed output is required.
-
-### Mandatory patterns
-
-- Always include an output contract in `question`.
-- Keep the question scoped to one task.
-- Prefer machine-checkable formats when possible (PASS/FAIL, JSON, one-item-per-line).
 
 ### `distill_batch` examples
 
-Input source: `go test ./...` output
-Tool call:
-- question: "Did tests pass? Return only PASS or FAIL. If FAIL, append failing test names."
-- input: "<full go test output>"
-
-Input source: `git diff` output
-Tool call:
-- question: "List only changed file paths, one per line."
-- input: "<full git diff output>"
-
-Input source: CI logs
-Tool call:
-- question: "Return valid JSON only with keys: severity, file, message."
-- input: "<full CI log output>"
+| Source | Question |
+|---|---|
+| `go test ./...` | `"Did tests pass? Return only PASS or FAIL."` |
+| `git diff` | `"List changed files and one short reason per file. Max 10 lines."` |
+| CI logs | `"Return only blocking errors with file and line if available."` |
 
 ### `distill_watch` examples
 
-Use when output is periodic or watch-like.
+| Snapshots | Question |
+|---|---|
+| Test watcher output at T−1 / T | `"What changed in failure count? Return one short sentence."` |
+| Deployment status at T−1 / T | `"Return only newly failing services, one per line."` |
 
-Tool call:
-- question: "What changed in failure count? One short sentence."
-- previous_cycle: "<cycle T-1>"
-- current_cycle: "<cycle T>"
+## AGENTS.md Template
 
-Tool call:
-- question: "Return only newly failing services, one per line."
-- previous_cycle: "<deployment status at T-1>"
-- current_cycle: "<deployment status at T>"
+Add a section like this to the `AGENTS.md` of any project that uses this MCP server.
+The goal is to make usage consistent and **default to distilling**, skipping only when the output is trivially small.
 
-### When NOT to distill
+````md
+## context-distill MCP Usage
 
-- You need exact raw output for compliance/audit.
-- You need full stack traces without compression.
-- You are debugging an interactive prompt exchange where exact terminal flow matters.
-```
+### Default behavior: ALWAYS distill
 
-### Suggested policy line for engineering teams
+Use `distill_batch` for ANY command output before sending it to the LLM.
+The only exception is when the raw output is trivially small (≤ 5–8 lines)
+and you can already read it at a glance — in that case, skip the call.
 
-Use this one-liner policy in project docs:
+If you are unsure whether to distill: **distill**. The cost of an unnecessary
+distill call is near zero; the cost of flooding the context with raw output
+is high.
+
+### Rules
+
+1. **Every `distill_batch` call MUST include an output contract in `question`.**
+   Tell the distiller exactly what format to return:
+   - "Return only PASS or FAIL."
+   - "Return valid JSON with keys: severity, file, message."
+   - "Return only filenames, one per line."
+
+2. **One task per call.** Don't combine unrelated questions.
+
+3. **Prefer machine-checkable formats** (PASS/FAIL, JSON, one-item-per-line)
+   so you can act on the result programmatically.
+
+### `distill_batch` examples
+
+| Source command       | `question`                                                                 |
+|----------------------|---------------------------------------------------------------------------|
+| `go test ./...`      | "Did all tests pass? Return only PASS or FAIL. If FAIL, list failing test names, one per line." |
+| `git diff`           | "List only changed file paths, one per line."                             |
+| CI / build logs      | "Return valid JSON array. Each object has keys: severity, file, message." |
+| `docker logs <ctr>`  | "Summarise errors only. One bullet per distinct error."                   |
+| `find` / `ls -lR`    | "Return only paths that match *.go, one per line."                        |
+
+### `distill_watch` — periodic / watch-like output
+
+When you have two snapshots of the same source, use `distill_watch` to extract
+only what changed.
+
+| `question`                                            | `previous_cycle` | `current_cycle` |
+|-------------------------------------------------------|------------------|-----------------|
+| "What changed in failure count? One short sentence."  | snapshot T-1     | snapshot T      |
+| "Return only newly failing services, one per line."   | status at T-1    | status at T     |
+
+### When to skip distill (exceptions only)
+
+Skip the call **only** when one of these is true:
+
+- The output is **≤ 5–8 lines** and already human-readable at a glance.
+- You need the **exact raw bytes** for compliance, audit, or binary integrity.
+- You are debugging an **interactive terminal exchange** where the precise
+  character-by-character flow matters.
+
+In every other case, distill first.
+````
+
+### Suggested policy one-liner
+
+Drop this into your project docs for a quick reference:
 
 ```md
 Default policy: distill command output with `context-distill` before sending logs/traces/diffs to an LLM, unless raw output is explicitly required.
@@ -472,10 +425,10 @@ Default policy: distill command output with `context-distill` before sending log
 
 Use this variant when the consumer project runs automated pipelines and requires deterministic, machine-parseable output.
 
-```md
+````md
 ## context-distill MCP Usage (CI Mode)
 
-CRITICAL: For large command output consumed by automation, call `distill_batch` first.
+CRITICAL: For any command output consumed by automation, call `distill_batch` first.
 
 CRITICAL: Every `question` must define an explicit output contract and MUST be machine-parseable.
 - Prefer JSON objects or arrays only.
@@ -484,29 +437,29 @@ CRITICAL: Every `question` must define an explicit output contract and MUST be m
 
 CRITICAL: If JSON is requested, enforce:
 - "Return valid JSON only."
-- fixed keys and fixed value shapes.
+- Fixed keys and fixed value shapes.
 
 ### Standard contracts
 
-- Test status:
-  Question: "Return valid JSON only with keys: status, failing_tests. status must be PASS or FAIL."
-- Lint status:
-  Question: "Return valid JSON only with keys: status, issues. issues must be an array of {file,line,message}."
-- Diff summary:
-  Question: "Return valid JSON only with key files_changed as an array of file paths."
+- **Test status:**
+  `"Return valid JSON only with keys: status, failing_tests. status must be PASS or FAIL."`
+- **Lint status:**
+  `"Return valid JSON only with keys: status, issues. issues must be an array of {file, line, message}."`
+- **Diff summary:**
+  `"Return valid JSON only with key files_changed as an array of file paths."`
 
 ### `distill_watch` in CI
 
 Use `distill_watch` only for periodic snapshots with strict delta output.
 
-Question example:
-- "Return valid JSON only with keys: changed, added, removed. Each must be an array of strings."
+Example question:
+`"Return valid JSON only with keys: changed, added, removed. Each must be an array of strings."`
 
 ### Failure handling
 
 - If the distillation output does not match the requested schema, treat it as invalid and re-run with a stricter question.
-- If exact raw output is needed for audit/compliance, bypass distillation.
-```
+- If exact raw output is needed for audit or compliance, bypass distillation.
+````
 
 ## Project Structure
 
@@ -545,18 +498,17 @@ context-distill/
 
 ## Architecture
 
-Dependency rule:
+**Dependency rule:**
 
 ```text
-platform -> shared + distill/application + distill/domain
-distill/application -> distill/domain
-cmd -> platform + shared
+platform  →  shared + distill/application + distill/domain
+distill/application  →  distill/domain
+cmd  →  platform + shared
 ```
 
-Constraint:
-- `shared` and `distill/domain` must not import `platform`.
+**Constraint:** `shared` and `distill/domain` must never import `platform`.
 
-## Development and Quality
+## Development
 
 ### Tests and static checks
 
@@ -570,9 +522,9 @@ go vet ./...
 1. `go test ./...`
 2. `./bin/context-distill --config-ui`
 3. `./bin/context-distill --transport stdio`
-4. Validate behavior from your MCP client
+4. Validate behavior from your MCP client.
 
-## Optional Live Test (real provider)
+### Optional live test (real provider)
 
 ```bash
 DISTILL_LIVE_TEST=1 OPENAI_BASE_URL=https://openrouter.ai/api/v1 \
@@ -581,34 +533,43 @@ go test -tags=live ./platform/di -run TestLiveDistillBatchWithOpenAICompatiblePr
 
 ## Troubleshooting
 
-### `provider unauthorized`
-
-Check:
-- `distill.api_key`
-- or fallback `openai.api_key` depending on provider.
-
-### `requires base_url`
-
-Set `distill.base_url` (fastest path is `--config-ui`).
-
-### MCP client does not detect server
-
-Check:
-- absolute binary path;
-- executable permissions;
-- `stdio` transport in client config.
-
-### Server fails due to config validation
-
-Run:
-- `--config-ui` for initial setup;
-- then run normally (`./bin/context-distill --transport stdio`).
+| Problem | Fix |
+|---|---|
+| `provider unauthorized` | Verify `distill.api_key` (or the fallback `openai.api_key`, depending on the provider). |
+| `requires base_url` | Set `distill.base_url`. The fastest path is `--config-ui`. |
+| MCP client does not detect the server | Confirm the binary path is absolute, has execute permissions, and transport is `stdio`. |
+| Server fails on config validation | Run `--config-ui` for initial setup, then start normally. |
 
 ## Security
 
-- Do not commit real API keys to public repositories.
-- Prefer environment-based secrets in shared environments.
+- **Never** commit real API keys to public repositories.
+- Prefer environment-based secrets in shared or CI environments.
 
 ## License
 
-Internal/private project (adjust to your final license model).
+Copyright © 2025 jcastilloa. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
