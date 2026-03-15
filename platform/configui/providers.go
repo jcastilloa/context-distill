@@ -28,6 +28,7 @@ func ProviderOptions() []ProviderOption {
 			Name:           provider,
 			Label:          providerLabel(provider),
 			DefaultBaseURL: configrepo.ProviderDefaultBaseURL(provider),
+			DefaultModel:   configrepo.ProviderDefaultModel(provider),
 			RequiresAPIKey: configrepo.ProviderRequiresAPIKey(provider),
 		})
 	}

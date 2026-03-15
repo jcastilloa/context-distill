@@ -13,6 +13,7 @@ const (
 	defaultLocalAIBaseURL           = "http://127.0.0.1:8080/v1"
 	defaultVLLMBaseURL              = "http://127.0.0.1:8000/v1"
 	defaultDockerModelRunnerBaseURL = "http://127.0.0.1:12434/engines/v1"
+	defaultOllamaModel              = "qwen3.5:2b"
 )
 
 var configProviderAliases = map[string]string{
@@ -89,6 +90,15 @@ func providerRequiresAPIKey(provider string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func providerDefaultModel(provider string) string {
+	switch normalizeProviderName(provider) {
+	case "ollama":
+		return defaultOllamaModel
+	default:
+		return ""
 	}
 }
 

@@ -19,3 +19,7 @@ func ProviderDefaultBaseURL(provider string) string {
 func ProviderRequiresAPIKey(provider string) bool {
 	return providerRequiresAPIKey(provider)
 }
+
+func ProviderDefaultModel(provider string) string {
+	return providerDefaultModel(provider)
+}

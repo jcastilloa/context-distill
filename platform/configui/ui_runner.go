@@ -42,7 +42,7 @@ func (r TViewRunner) Run(serviceName string) error {
 	statusView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetWrap(true).
-		SetText("[gray]Select provider, base URL, and API key when required.")
+		SetText("[gray]Select provider, model, base URL, and API key when required.")
 
 	helperView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -58,6 +58,14 @@ func (r TViewRunner) Run(serviceName string) error {
 		SetLabel("API Key    ").
 		SetText(settings.APIKey).
 		SetMaskCharacter('*').
+		SetFieldWidth(64)
+	model := settings.Model
+	if strings.TrimSpace(model) == "" {
+		model = selectedProvider.DefaultModel
+	}
+	modelInput := tview.NewInputField().
+		SetLabel("Model      ").
+		SetText(model).
 		SetFieldWidth(64)
 
 	optionLabels := make([]string, 0, len(options))
@@ -76,6 +84,10 @@ func (r TViewRunner) Run(serviceName string) error {
 		if currentBaseURL == "" || currentBaseURL == selectedProvider.DefaultBaseURL {
 			baseURLInput.SetText(next.DefaultBaseURL)
 		}
+		currentModel := strings.TrimSpace(modelInput.GetText())
+		if currentModel == "" || currentModel == selectedProvider.DefaultModel {
+			modelInput.SetText(next.DefaultModel)
+		}
 
 		helperView.SetText(providerHelperText(next))
 		selectedProvider = next
@@ -83,6 +95,7 @@ func (r TViewRunner) Run(serviceName string) error {
 
 	form := tview.NewForm().
 		AddFormItem(providerDropDown).
+		AddFormItem(modelInput).
 		AddFormItem(baseURLInput).
 		AddFormItem(apiKeyInput).
 		AddButton("Save", func() {
@@ -94,6 +107,7 @@ func (r TViewRunner) Run(serviceName string) error {
 
 			saveSettings := DistillSettings{
 				ProviderName: options[index].Name,
+				Model:        modelInput.GetText(),
 				BaseURL:      baseURLInput.GetText(),
 				APIKey:       apiKeyInput.GetText(),
 			}

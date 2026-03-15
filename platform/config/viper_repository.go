@@ -21,7 +21,6 @@ type ViperRepository struct {
 const (
 	defaultDistillProvider = "ollama"
 	defaultDistillBaseURL  = "http://127.0.0.1:11434"
-	defaultOllamaModel     = "qwen3.5:2b"
 	defaultDistillTimeout  = 90 * time.Second
 )
 
@@ -118,11 +117,7 @@ func (r *ViperRepository) DistillProviderConfig() aiDomain.ProviderConfig {
 }
 
 func defaultModelForProvider(provider string) string {
-	if normalizeProviderName(provider) == "ollama" {
-		return defaultOllamaModel
-	}
-
-	return ""
+	return providerDefaultModel(provider)
 }
 
 func (r *ViperRepository) ServiceConfig() configDomain.ServiceConfig {

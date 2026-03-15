@@ -28,6 +28,7 @@ func (FileRepository) Load(serviceName string) (DistillSettings, error) {
 		ProviderName: cfg.ProviderName,
 		BaseURL:      cfg.BaseURL,
 		APIKey:       cfg.APIKey,
+		Model:        cfg.Model,
 	})
 
 	return settings, nil
@@ -51,6 +52,11 @@ func (FileRepository) Save(serviceName string, settings DistillSettings) error {
 	distillMap := readSection(cfg, "distill")
 	distillMap["provider_name"] = normalized.ProviderName
 	distillMap["base_url"] = normalized.BaseURL
+	if normalized.Model == "" {
+		delete(distillMap, "model")
+	} else {
+		distillMap["model"] = normalized.Model
+	}
 
 	if normalized.APIKey == "" {
 		delete(distillMap, "api_key")

@@ -12,12 +12,16 @@ func NormalizeSettings(settings DistillSettings) DistillSettings {
 		ProviderName: configrepo.NormalizeProviderName(settings.ProviderName),
 		BaseURL:      strings.TrimSpace(settings.BaseURL),
 		APIKey:       strings.TrimSpace(settings.APIKey),
+		Model:        strings.TrimSpace(settings.Model),
 	}
 	if normalized.ProviderName == "" {
 		normalized.ProviderName = "ollama"
 	}
 	if normalized.BaseURL == "" {
 		normalized.BaseURL = configrepo.ProviderDefaultBaseURL(normalized.ProviderName)
+	}
+	if normalized.Model == "" {
+		normalized.Model = configrepo.ProviderDefaultModel(normalized.ProviderName)
 	}
 
 	return normalized
@@ -36,6 +40,9 @@ func ValidateSettings(settings DistillSettings) error {
 
 	if configrepo.ProviderRequiresAPIKey(normalized.ProviderName) && normalized.APIKey == "" {
 		return fmt.Errorf("API key is required for provider %q", normalized.ProviderName)
+	}
+	if configrepo.IsOpenAICompatibleProvider(normalized.ProviderName) && normalized.Model == "" {
+		return fmt.Errorf("model is required for provider %q", normalized.ProviderName)
 	}
 
 	return nil
