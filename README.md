@@ -27,6 +27,44 @@ It also includes:
 - Go `1.26+`
 - Make (recommended)
 
+If you prefer, you can install from GitHub Releases without compiling (see next section).
+
+## Install Without Compiling
+
+Install latest release binary:
+
+- Linux/macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | sh
+```
+
+- Windows (PowerShell):
+
+```powershell
+iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
+```
+
+Install a specific version:
+
+- Linux/macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | VERSION=v0.1.0 sh
+```
+
+- Windows (PowerShell):
+
+```powershell
+$env:VERSION='v0.1.0'; iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
+```
+
+Optional environment variables:
+- `REPO` (default: `jcastilloa/context-distill`)
+- `SERVICE_NAME` (default: `context-distill`)
+- `INSTALL_DIR` (default Linux/macOS: `~/.local/bin`, Windows: `%LOCALAPPDATA%\context-distill\bin`)
+- `VERSION` (default: latest release tag)
+
 ## Makefile
 
 This repository already ships with a `Makefile`:
@@ -63,6 +101,20 @@ make build
 
 Output:
 - `./bin/context-distill`
+
+### 1b. Or install a prebuilt binary (no build)
+
+- Linux/macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | sh
+```
+
+- Windows (PowerShell):
+
+```powershell
+iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
+```
 
 ### 2. (Optional) Install to local PATH
 
