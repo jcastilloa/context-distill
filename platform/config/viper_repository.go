@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jcastilloa/context-distill/shared/buildinfo"
 	aiDomain "github.com/jcastilloa/context-distill/shared/ai/domain"
 	configDomain "github.com/jcastilloa/context-distill/shared/config/domain"
 
@@ -121,16 +122,11 @@ func defaultModelForProvider(provider string) string {
 }
 
 func (r *ViperRepository) ServiceConfig() configDomain.ServiceConfig {
-	version := r.v.GetString("service.version")
-	if version == "" {
-		version = "0.1.0"
-	}
-
 	return configDomain.ServiceConfig{
 		Host:      r.v.GetString("service.host"),
 		Port:      r.v.GetInt("service.port"),
 		APIPrefix: r.v.GetString("service.api_prefix"),
-		Version:   version,
+		Version:   buildinfo.NormalizedVersion(),
 		Transport: r.v.GetString("service.transport"),
 	}
 }

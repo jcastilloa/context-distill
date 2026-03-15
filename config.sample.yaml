@@ -1,6 +1,5 @@
 service:
   transport: stdio
-  version: 0.1.0
 
 openai:
   provider_name: openai

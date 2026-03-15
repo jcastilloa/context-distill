@@ -35,7 +35,7 @@ function Resolve-Version {
     $apiUrl = "https://api.github.com/repos/$Repo/releases/latest"
     $release = Invoke-RestMethod -Uri $apiUrl
     if (-not $release.tag_name) {
-        throw "Could not resolve latest release tag from $apiUrl. Set -Version manually (for example v0.1.0)."
+        throw "Could not resolve latest release tag from $apiUrl. Set -Version manually (for example vX.Y.Z)."
     }
 
     return [string]$release.tag_name

@@ -51,7 +51,7 @@ resolve_version() {
 	tag="$(printf '%s' "$response" | tr -d '\n' | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
 	if [ -z "$tag" ]; then
 		echo "error: could not resolve latest release tag from $api_url" >&2
-		echo "hint: set VERSION manually, for example VERSION=v0.1.0" >&2
+		echo "hint: set VERSION manually, for example VERSION=vX.Y.Z" >&2
 		exit 1
 	fi
 

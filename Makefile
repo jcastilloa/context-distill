@@ -7,6 +7,10 @@ BIN_DIR := ./bin
 BIN := $(BIN_DIR)/$(SERVICE_NAME)
 DIST_DIR := ./dist
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+VERSION_PACKAGE := github.com/jcastilloa/context-distill/shared/buildinfo
+LDFLAGS_VERSION := -X $(VERSION_PACKAGE).Version=$(VERSION)
+BUILD_LDFLAGS ?= $(LDFLAGS_VERSION)
+RELEASE_LDFLAGS ?= -s -w $(LDFLAGS_VERSION)
 PLATFORMS ?= linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 RELEASE_BASENAME := $(SERVICE_NAME)_$(VERSION)
 RELEASE_FILES := README.md config.sample.yaml
@@ -34,7 +38,7 @@ help:
 
 build:
 	@mkdir -p $(BIN_DIR)
-	@$(GO) build -o $(BIN) $(CMD_DIR)
+	@$(GO) build -ldflags "$(BUILD_LDFLAGS)" -o $(BIN) $(CMD_DIR)
 	@echo "built: $(BIN)"
 
 install: build
@@ -57,7 +61,7 @@ release: ensure-tools clean-dist
 		if [ "$$os" = "windows" ]; then bin_name="$(SERVICE_NAME).exe"; fi; \
 		echo "building $$os/$$arch"; \
 		mkdir -p "$$stage_dir"; \
-		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch $(GO) build -trimpath -ldflags "-s -w" -o "$$stage_dir/$$bin_name" $(CMD_DIR); \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch $(GO) build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o "$$stage_dir/$$bin_name" $(CMD_DIR); \
 		for file in $(RELEASE_FILES); do \
 			cp "$$file" "$$stage_dir/"; \
 		done; \

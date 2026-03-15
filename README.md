@@ -50,13 +50,13 @@ Install a specific version:
 - Linux/macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | VERSION=v0.1.0 sh
+curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | VERSION=vX.Y.Z sh
 ```
 
 - Windows (PowerShell):
 
 ```powershell
-$env:VERSION='v0.1.0'; iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
+$env:VERSION='vX.Y.Z'; iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
 ```
 
 Optional environment variables:
@@ -177,6 +177,51 @@ codex mcp get context-distill
 
 Then restart your Codex session so it reloads MCP servers.
 
+#### Option D: OpenCode CLI registration (`opencode mcp add`)
+
+Run:
+
+```bash
+opencode mcp add
+```
+
+Then follow the prompts:
+1. `Location`: choose `Current project` or `Global`.
+2. `Enter MCP server name`: `context-distill`.
+3. `Select MCP server type`: `local`.
+4. `Enter command to run`: `/absolute/path/to/context-distill --transport stdio`.
+
+Verify in OpenCode:
+
+```bash
+opencode mcp list
+```
+
+If it is not connected yet, restart your OpenCode session.
+
+#### Option E: OpenCode manual config (`opencode.json`)
+
+You can also add it manually in `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "context-distill": {
+      "type": "local",
+      "command": ["/absolute/path/to/context-distill", "--transport", "stdio"],
+      "enabled": true
+    }
+  }
+}
+```
+
+Then run:
+
+```bash
+opencode mcp list
+```
+
 ### MCP registration notes
 
 - Use an absolute binary path.
@@ -229,7 +274,6 @@ You can also edit config manually.
 ```yaml
 service:
   transport: stdio
-  version: 0.1.0
 
 openai:
   provider_name: openai
@@ -249,6 +293,9 @@ distill:
   max_retries: 0
   thinking: false
 ```
+
+Note:
+- `service.version` is injected at build time from the binary metadata and does not need to be configured manually.
 
 ## Provider Matrix
 

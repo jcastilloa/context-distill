@@ -88,9 +88,6 @@ func ensureDefaultServiceSection(cfg map[string]any) {
 	if _, exists := serviceMap["transport"]; !exists {
 		serviceMap["transport"] = "stdio"
 	}
-	if _, exists := serviceMap["version"]; !exists {
-		serviceMap["version"] = "0.1.0"
-	}
 	cfg["service"] = serviceMap
 }
 

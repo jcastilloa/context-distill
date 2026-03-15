@@ -70,8 +70,8 @@ func TestFileRepositorySaveWritesConfigInServiceDirectory(t *testing.T) {
 	if service["transport"] != "stdio" {
 		t.Fatalf("unexpected service.transport: %v", service["transport"])
 	}
-	if service["version"] != "0.1.0" {
-		t.Fatalf("unexpected service.version: %v", service["version"])
+	if _, exists := service["version"]; exists {
+		t.Fatalf("service.version should not be added by default: %v", service["version"])
 	}
 }
 
