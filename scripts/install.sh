@@ -42,7 +42,13 @@ resolve_version() {
 	fi
 
 	api_url="https://api.github.com/repos/$REPO/releases/latest"
-	tag="$(curl -fsSL "$api_url" | tr -d '\n' | sed -n 's/.*"tag_name":"\([^"]*\)".*/\1/p')"
+	response="$(curl -fsSL "$api_url")" || {
+		echo "error: could not fetch latest release metadata from $api_url" >&2
+		echo "hint: check network/GitHub rate limit or set VERSION manually" >&2
+		exit 1
+	}
+
+	tag="$(printf '%s' "$response" | tr -d '\n' | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
 	if [ -z "$tag" ]; then
 		echo "error: could not resolve latest release tag from $api_url" >&2
 		echo "hint: set VERSION manually, for example VERSION=v0.1.0" >&2
