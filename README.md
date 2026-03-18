@@ -358,59 +358,43 @@ The goal is to make usage consistent and **default to distilling**, skipping onl
 ````md
 ## context-distill MCP Usage
 
-### Default behavior: ALWAYS distill
-
-Use `distill_batch` for ANY command output before sending it to the LLM.
-The only exception is when the raw output is trivially small (≤ 5–8 lines)
-and you can already read it at a glance — in that case, skip the call.
-
-If you are unsure whether to distill: **distill**. The cost of an unnecessary
-distill call is near zero; the cost of flooding the context with raw output
-is high.
+**Default: ALWAYS distill.** Use `distill_batch` for ANY command output before
+sending it to the LLM. Skip ONLY if the output is ≤ 5–8 lines and readable at
+a glance. When unsure: **distill** — unnecessary calls cost ≈ 0; flooding
+context is expensive.
 
 ### Rules
 
-1. **Every `distill_batch` call MUST include an output contract in `question`.**
-   Tell the distiller exactly what format to return:
-   - "Return only PASS or FAIL."
-   - "Return valid JSON with keys: severity, file, message."
-   - "Return only filenames, one per line."
-
-2. **One task per call.** Don't combine unrelated questions.
-
-3. **Prefer machine-checkable formats** (PASS/FAIL, JSON, one-item-per-line)
-   so you can act on the result programmatically.
+1. **Every call MUST include an output contract in `question`** — tell the
+   distiller the exact return format: `"PASS or FAIL"`, `"valid JSON {severity, file, message}"`,
+   `"filenames, one per line"`, etc.
+2. **One task per call.** No mixing unrelated questions.
+3. **Prefer machine-checkable formats** (PASS/FAIL, JSON, one-item-per-line).
 
 ### `distill_batch` examples
 
-| Source command       | `question`                                                                 |
-|----------------------|---------------------------------------------------------------------------|
-| `go test ./...`      | "Did all tests pass? Return only PASS or FAIL. If FAIL, list failing test names, one per line." |
-| `git diff`           | "List only changed file paths, one per line."                             |
-| CI / build logs      | "Return valid JSON array. Each object has keys: severity, file, message." |
-| `docker logs <ctr>`  | "Summarise errors only. One bullet per distinct error."                   |
-| `find` / `ls -lR`    | "Return only paths that match *.go, one per line."                        |
+| Source command    | `question`                                                                          |
+|-------------------|-------------------------------------------------------------------------------------|
+| `go test ./...`   | "Did all tests pass? PASS or FAIL. If FAIL, list failing test names, one per line." |
+| `git diff`        | "List only changed file paths, one per line."                                       |
+| CI / build logs   | "Return JSON array: `[{severity, file, message}]`."                                |
+| `docker logs`     | "Summarise errors only. One bullet per distinct error."                             |
+| `find` / `ls -lR` | "Return only `*.go` paths, one per line."                                           |
 
-### `distill_watch` — periodic / watch-like output
+### `distill_watch` — diff between snapshots
 
-When you have two snapshots of the same source, use `distill_watch` to extract
-only what changed.
+Use when you have two snapshots of the same source to extract only what changed.
 
-| `question`                                            | `previous_cycle` | `current_cycle` |
-|-------------------------------------------------------|------------------|-----------------|
-| "What changed in failure count? One short sentence."  | snapshot T-1     | snapshot T      |
-| "Return only newly failing services, one per line."   | status at T-1    | status at T     |
+| `question`                                           | `previous_cycle` | `current_cycle` |
+|------------------------------------------------------|------------------|-----------------|
+| "What changed in failure count? One short sentence." | snapshot T-1     | snapshot T      |
+| "Return only newly failing services, one per line."  | status at T-1    | status at T     |
 
 ### When to skip distill (exceptions only)
 
-Skip the call **only** when one of these is true:
-
-- The output is **≤ 5–8 lines** and already human-readable at a glance.
-- You need the **exact raw bytes** for compliance, audit, or binary integrity.
-- You are debugging an **interactive terminal exchange** where the precise
-  character-by-character flow matters.
-
-In every other case, distill first.
+- Output **≤ 5–8 lines**, already human-readable.
+- You need **exact raw bytes** (compliance / audit / binary integrity).
+- Debugging an **interactive terminal** where character-by-character flow matters.
 ````
 
 ### Suggested policy one-liner
