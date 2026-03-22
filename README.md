@@ -1,31 +1,32 @@
 # context-distill
 
-A Go MCP server that **distills command output** before it reaches a paid LLM. Inspired by the `distill` CLI and built with hexagonal architecture, dependency injection, and TDD.
+A Go tool that **distills command output** before it reaches a paid LLM. Available as both an **MCP server** and a **standalone CLI**. Inspired by the `distill` CLI and built with hexagonal architecture, dependency injection, and TDD.
 
 ## Overview
 
-`context-distill` exposes two distillation operations in **both MCP and CLI modes**:
+`context-distill` exposes two distillation operations accessible in **two ways**: as **MCP tools** (for AI agents and MCP-compatible clients) and as **native CLI subcommands** (for local shell workflows and agent runtimes that execute shell commands directly):
 
-| Tool | Purpose |
+| Operation | Purpose |
 |---|---|
 | `distill_batch` | Compresses full command output to answer a single, explicit question. |
 | `distill_watch` | Compares two consecutive snapshots and returns only the relevant delta. |
+
+Both interfaces share the same underlying use cases, validation rules, and output behavior — only the invocation method differs.
 
 It also provides:
 
 - LLM provider configuration via YAML and environment variables.
 - An interactive terminal UI for first-time setup (`--config-ui`).
 - Support for Ollama and any OpenAI-compatible provider.
-- Native CLI subcommands (`distill_batch`, `distill_watch`) for local shell workflows.
 
 ## Features
 
+- **Dual interface** — MCP tools for agent-driven workflows + equivalent Cobra CLI commands for direct shell use.
 - **Hexagonal architecture** — `distill/domain`, `distill/application`, `platform/*`.
 - **Dependency injection** via `sarulabs/di`.
 - **Config management** with `viper` + `.env`.
 - **Provider-specific validation** at config time.
 - **Interactive setup UI** (`--config-ui`).
-- **Dual interface**: MCP tools + equivalent Cobra CLI commands.
 - **Unit, integration, and optional live tests.**
 
 ## Requirements
@@ -97,17 +98,19 @@ make help
 
 ## Quick Start
 
+### MCP server mode
+
 ```bash
 make build
 ./bin/context-distill --config-ui      # interactive provider setup
 ./bin/context-distill --transport stdio # start the MCP server
 ```
 
-That is all you need to build, configure, and run the server.
+That is all you need to build, configure, and run the MCP server. Register it in your MCP client (see [MCP Client Registration](#mcp-client-registration) below) and the `distill_batch` / `distill_watch` tools will be available to your agent.
 
-### Quick Start (CLI mode)
+### CLI mode
 
-The same distillation operations are also available as direct CLI commands:
+The same distillation operations are also available as direct CLI subcommands — no MCP client required:
 
 ```bash
 # Distill full output
@@ -122,9 +125,11 @@ The same distillation operations are also available as direct CLI commands:
   --current-cycle "$(cat /tmp/curr.log)"
 ```
 
+Use CLI mode when your agent runtime does not support MCP tools but can execute shell commands, or for local scripting and CI pipelines.
+
 ## MCP Client Registration
 
-After building or installing the binary, register it in your MCP client.
+After building or installing the binary, register it in your MCP client to use the tool interface.
 
 ### JSON-based clients (Claude Desktop, Cursor, etc.)
 
@@ -297,7 +302,7 @@ distill:
 | `mlx-lm` | openai-compatible | No | — |
 | `docker-model-runner` | openai-compatible | No | `http://127.0.0.1:12434/engines/v1` |
 
-## Running the Server
+## Running the MCP Server
 
 ```bash
 ./bin/context-distill --transport stdio
@@ -319,6 +324,8 @@ go run ./cmd/server version
 | `--config-ui` | Open setup UI and exit | `false` |
 
 ## CLI Commands Reference
+
+The CLI commands provide the same distillation capabilities as the MCP tools but are invoked directly from the shell. Use them in local scripts, CI pipelines, or with agent runtimes that execute shell commands instead of MCP tools.
 
 ### `distill_batch`
 
@@ -364,6 +371,8 @@ Flags:
 
 ## MCP Tools Reference
 
+The MCP tools expose the same distillation capabilities as the CLI commands, but are consumed by MCP-compatible clients (Claude Desktop, Cursor, Codex, OpenCode, etc.) over the `stdio` transport.
+
 ### `distill_batch`
 
 | Parameter | Type | Required | Description |
@@ -385,7 +394,7 @@ Returns a short summary of relevant changes, or a no-change message when nothing
 
 ## Writing Good Questions
 
-The quality of the distillation depends entirely on the `question`. Be explicit about **what** you want and **in what format**.
+The quality of the distillation depends entirely on the `question` — whether invoked via MCP tool or CLI command. Be explicit about **what** you want and **in what format**.
 
 ### Bad questions
 
@@ -413,10 +422,12 @@ The quality of the distillation depends entirely on the `question`. Be explicit 
 | Test watcher output at T−1 / T | `"What changed in failure count? Return one short sentence."` |
 | Deployment status at T−1 / T | `"Return only newly failing services, one per line."` |
 
-## AGENTS.md Template
+## AGENTS.md Template (MCP Mode)
 
-Add a section like this to the `AGENTS.md` of any project that uses this MCP server.
+Add a section like this to the `AGENTS.md` of any project that uses this tool via MCP.
 The goal is to make usage consistent and **default to distilling**, skipping only when the output is trivially small.
+
+> If your agent runtime does not support MCP tools but can execute shell commands, use the **CLI Mode** template below instead.
 
 ````md
 ## context-distill MCP Usage
@@ -465,12 +476,12 @@ Use when you have two snapshots of the same source to extract only what changed.
 Drop this into your project docs for a quick reference:
 
 ```md
-Default policy: distill command output with `context-distill` before sending logs/traces/diffs to an LLM, unless raw output is explicitly required.
+Default policy: distill command output with `context-distill` (via MCP tool or CLI) before sending logs/traces/diffs to an LLM, unless raw output is explicitly required.
 ```
 
 ## AGENTS.md Template (CLI Mode)
 
-Use this variant when your agent runtime does not use MCP tools directly but can run shell commands.
+Use this variant when your agent runtime does not use MCP tools directly but can run shell commands. The operations and rules are identical — only the invocation changes.
 
 ````md
 ## context-distill CLI Usage
@@ -515,7 +526,7 @@ context-distill distill_watch \
 
 ## AGENTS.md Template (Strict CI Mode)
 
-Use this variant when the consumer project runs automated pipelines and requires deterministic, machine-parseable output.
+Use this variant when the consumer project runs automated pipelines and requires deterministic, machine-parseable output. Works with both the MCP tools and the CLI commands — adapt the invocation to your pipeline tooling.
 
 ````md
 ## context-distill MCP Usage (CI Mode)
@@ -614,7 +625,7 @@ go vet ./...
 1. `go test ./...`
 2. `./bin/context-distill --config-ui`
 3. `./bin/context-distill --transport stdio`
-4. Validate behavior from your MCP client.
+4. Validate behavior from your MCP client or via CLI commands.
 
 ### Optional live test (real provider)
 
@@ -631,6 +642,7 @@ go test -tags=live ./platform/di -run TestLiveDistillBatchWithOpenAICompatiblePr
 | `requires base_url` | Set `distill.base_url`. The fastest path is `--config-ui`. |
 | MCP client does not detect the server | Confirm the binary path is absolute, has execute permissions, and transport is `stdio`. |
 | Server fails on config validation | Run `--config-ui` for initial setup, then start normally. |
+| CLI command returns non-zero exit code | Check that all required flags (`--question`, `--input` or `--previous-cycle`/`--current-cycle`) are provided and non-empty. |
 
 ## Security
 
@@ -639,7 +651,7 @@ go test -tags=live ./platform/di -run TestLiveDistillBatchWithOpenAICompatiblePr
 
 ## License
 
-Copyright © 2025 jcastilloa. All rights reserved.
+Copyright © 2026 jcastilloa. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
