@@ -4,7 +4,7 @@ A Go MCP server that **distills command output** before it reaches a paid LLM. I
 
 ## Overview
 
-`context-distill` exposes two MCP tools:
+`context-distill` exposes two distillation operations in **both MCP and CLI modes**:
 
 | Tool | Purpose |
 |---|---|
@@ -16,6 +16,7 @@ It also provides:
 - LLM provider configuration via YAML and environment variables.
 - An interactive terminal UI for first-time setup (`--config-ui`).
 - Support for Ollama and any OpenAI-compatible provider.
+- Native CLI subcommands (`distill_batch`, `distill_watch`) for local shell workflows.
 
 ## Features
 
@@ -24,6 +25,7 @@ It also provides:
 - **Config management** with `viper` + `.env`.
 - **Provider-specific validation** at config time.
 - **Interactive setup UI** (`--config-ui`).
+- **Dual interface**: MCP tools + equivalent Cobra CLI commands.
 - **Unit, integration, and optional live tests.**
 
 ## Requirements
@@ -102,6 +104,23 @@ make build
 ```
 
 That is all you need to build, configure, and run the server.
+
+### Quick Start (CLI mode)
+
+The same distillation operations are also available as direct CLI commands:
+
+```bash
+# Distill full output
+./bin/context-distill distill_batch \
+  --question "Did tests pass? Return only PASS or FAIL." \
+  --input "$(go test ./... 2>&1)"
+
+# Distill changes between two snapshots
+./bin/context-distill distill_watch \
+  --question "What changed in failure count? Return one short sentence." \
+  --previous-cycle "$(cat /tmp/prev.log)" \
+  --current-cycle "$(cat /tmp/curr.log)"
+```
 
 ## MCP Client Registration
 
@@ -292,12 +311,56 @@ go run ./cmd/server --transport stdio
 go run ./cmd/server version
 ```
 
-### CLI Flags
+### Server Flags
 
 | Flag | Description | Default |
 |---|---|---|
 | `--transport` | MCP transport mode (`stdio`) | `service.transport` |
 | `--config-ui` | Open setup UI and exit | `false` |
+
+## CLI Commands Reference
+
+### `distill_batch`
+
+Distills one raw output payload using an explicit question contract.
+
+```bash
+./bin/context-distill distill_batch \
+  --question "Did all tests pass? Return only PASS or FAIL." \
+  --input "$(go test ./... 2>&1)"
+```
+
+Flags:
+
+| Flag | Required | Description |
+|---|---|---|
+| `--question` | yes | Exact question to answer from the command output. |
+| `--input` | yes | Raw command output to distill. |
+
+### `distill_watch`
+
+Distills only the relevant delta between two snapshots.
+
+```bash
+./bin/context-distill distill_watch \
+  --question "Return only newly failing services, one per line." \
+  --previous-cycle "$(cat /tmp/health.prev)" \
+  --current-cycle "$(cat /tmp/health.curr)"
+```
+
+Flags:
+
+| Flag | Required | Description |
+|---|---|---|
+| `--question` | yes | Exact question to answer from cycle changes. |
+| `--previous-cycle` | yes | Previous watch cycle output snapshot. |
+| `--current-cycle` | yes | Current watch cycle output snapshot. |
+
+### CLI Notes
+
+- CLI commands and MCP tools share the same underlying use cases and validation rules.
+- Invalid/missing inputs return a non-zero exit code.
+- Output is written to standard output exactly as produced by the distill use case.
 
 ## MCP Tools Reference
 
@@ -404,6 +467,51 @@ Drop this into your project docs for a quick reference:
 ```md
 Default policy: distill command output with `context-distill` before sending logs/traces/diffs to an LLM, unless raw output is explicitly required.
 ```
+
+## AGENTS.md Template (CLI Mode)
+
+Use this variant when your agent runtime does not use MCP tools directly but can run shell commands.
+
+````md
+## context-distill CLI Usage
+
+Default behavior: distill command output before sending it to the LLM.
+
+Use the local binary:
+- `context-distill distill_batch`
+- `context-distill distill_watch`
+
+### Rules
+
+1. Every invocation MUST include an output contract in `--question`.
+2. One task per call.
+3. Prefer machine-checkable formats (PASS/FAIL, JSON, one-item-per-line).
+
+### CLI patterns
+
+#### Batch output
+
+```bash
+context-distill distill_batch \
+  --question "Did all tests pass? Return only PASS or FAIL. If FAIL, list failing tests one per line." \
+  --input "$(go test ./... 2>&1)"
+```
+
+#### Snapshot delta
+
+```bash
+context-distill distill_watch \
+  --question "Return only newly failing services, one per line." \
+  --previous-cycle "$(cat /tmp/status.prev)" \
+  --current-cycle "$(cat /tmp/status.curr)"
+```
+
+### When to skip distill (exceptions only)
+
+- Output is ≤ 5–8 lines and readable at a glance.
+- Exact raw bytes are required (audit/compliance/binary integrity).
+- Interactive terminal debugging where exact character flow matters.
+````
 
 ## AGENTS.md Template (Strict CI Mode)
 
@@ -556,4 +664,3 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-

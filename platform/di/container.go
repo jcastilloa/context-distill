@@ -138,7 +138,18 @@ func (c *Container) Build() (*di.Container, error) {
 				configUIRunner := ctn.Get(ConfigUIRunnerLabel).(commands.ConfigUIRunner)
 				distillBatchTool := ctn.Get(DistillBatchToolLabel).(tools.DistillBatch)
 				distillWatchTool := ctn.Get(DistillWatchToolLabel).(tools.DistillWatch)
-				return commands.NewRunner(c.serviceName, c.serviceCfg, server, configUIRunner, distillBatchTool, distillWatchTool), nil
+				distillBatchUseCase := ctn.Get(DistillBatchUseCaseLabel).(*distillApp.DistillBatchUseCase)
+				distillWatchUseCase := ctn.Get(DistillWatchUseCaseLabel).(*distillApp.DistillWatchUseCase)
+				return commands.NewRunner(
+					c.serviceName,
+					c.serviceCfg,
+					server,
+					configUIRunner,
+					distillBatchTool,
+					distillWatchTool,
+					distillBatchUseCase,
+					distillWatchUseCase,
+				), nil
 			},
 		},
 	)

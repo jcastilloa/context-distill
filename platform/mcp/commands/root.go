@@ -1,8 +1,11 @@
 package commands
 
 import (
+	"context"
 	"fmt"
+	"io"
 
+	distillapp "github.com/jcastilloa/context-distill/distill/application/distillation"
 	mcpserver "github.com/jcastilloa/context-distill/platform/mcp/server"
 	"github.com/jcastilloa/context-distill/platform/mcp/tools"
 	configDomain "github.com/jcastilloa/context-distill/shared/config/domain"
@@ -14,12 +17,22 @@ import (
 const RootCommandLabel = "mcp.root.command"
 
 type Runner struct {
-	serviceName      string
-	serviceCfg       configDomain.ServiceConfig
-	server           *mcpserver.Server
-	configUIRunner   ConfigUIRunner
-	distillBatchTool tools.DistillBatch
-	distillWatchTool tools.DistillWatch
+	serviceName         string
+	serviceCfg          configDomain.ServiceConfig
+	server              *mcpserver.Server
+	configUIRunner      ConfigUIRunner
+	distillBatchTool    tools.DistillBatch
+	distillWatchTool    tools.DistillWatch
+	distillBatchUseCase DistillBatchCLIUseCase
+	distillWatchUseCase DistillWatchCLIUseCase
+}
+
+type DistillBatchCLIUseCase interface {
+	Execute(ctx context.Context, request distillapp.DistillBatchRequest) (distillapp.DistillBatchResult, error)
+}
+
+type DistillWatchCLIUseCase interface {
+	Execute(ctx context.Context, request distillapp.DistillWatchRequest) (distillapp.DistillWatchResult, error)
 }
 
 func NewRunner(
@@ -29,14 +42,18 @@ func NewRunner(
 	configUIRunner ConfigUIRunner,
 	distillBatchTool tools.DistillBatch,
 	distillWatchTool tools.DistillWatch,
+	distillBatchUseCase DistillBatchCLIUseCase,
+	distillWatchUseCase DistillWatchCLIUseCase,
 ) Runner {
 	return Runner{
-		serviceName:      serviceName,
-		serviceCfg:       serviceCfg,
-		server:           server,
-		configUIRunner:   configUIRunner,
-		distillBatchTool: distillBatchTool,
-		distillWatchTool: distillWatchTool,
+		serviceName:         serviceName,
+		serviceCfg:          serviceCfg,
+		server:              server,
+		configUIRunner:      configUIRunner,
+		distillBatchTool:    distillBatchTool,
+		distillWatchTool:    distillWatchTool,
+		distillBatchUseCase: distillBatchUseCase,
+		distillWatchUseCase: distillWatchUseCase,
 	}
 }
 
@@ -61,6 +78,8 @@ func (r Runner) newRootCommand() *cobra.Command {
 	viper.AutomaticEnv()
 
 	cmd.AddCommand(r.newVersionCommand())
+	cmd.AddCommand(r.newDistillBatchCommand())
+	cmd.AddCommand(r.newDistillWatchCommand())
 	return cmd
 }
 
@@ -91,4 +110,66 @@ func (r Runner) newVersionCommand() *cobra.Command {
 			fmt.Println(r.serviceCfg.Version)
 		},
 	}
+}
+
+func (r Runner) newDistillBatchCommand() *cobra.Command {
+	var question string
+	var input string
+
+	cmd := &cobra.Command{
+		Use:   "distill_batch",
+		Short: "Distill command output for one question",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			result, err := r.distillBatchUseCase.Execute(cmd.Context(), distillapp.DistillBatchRequest{
+				Question: question,
+				Input:    input,
+			})
+			if err != nil {
+				return err
+			}
+
+			_, err = io.WriteString(cmd.OutOrStdout(), result.Output)
+			return err
+		},
+	}
+
+	cmd.Flags().StringVar(&question, "question", "", "Exact question to answer from the command output")
+	cmd.Flags().StringVar(&input, "input", "", "Raw command output to distill")
+	_ = cmd.MarkFlagRequired("question")
+	_ = cmd.MarkFlagRequired("input")
+
+	return cmd
+}
+
+func (r Runner) newDistillWatchCommand() *cobra.Command {
+	var question string
+	var previousCycle string
+	var currentCycle string
+
+	cmd := &cobra.Command{
+		Use:   "distill_watch",
+		Short: "Distill changes between two watch snapshots",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			result, err := r.distillWatchUseCase.Execute(cmd.Context(), distillapp.DistillWatchRequest{
+				Question:      question,
+				PreviousCycle: previousCycle,
+				CurrentCycle:  currentCycle,
+			})
+			if err != nil {
+				return err
+			}
+
+			_, err = io.WriteString(cmd.OutOrStdout(), result.Output)
+			return err
+		},
+	}
+
+	cmd.Flags().StringVar(&question, "question", "", "Exact question to answer from cycle changes")
+	cmd.Flags().StringVar(&previousCycle, "previous-cycle", "", "Previous watch cycle output")
+	cmd.Flags().StringVar(&currentCycle, "current-cycle", "", "Current watch cycle output")
+	_ = cmd.MarkFlagRequired("question")
+	_ = cmd.MarkFlagRequired("previous-cycle")
+	_ = cmd.MarkFlagRequired("current-cycle")
+
+	return cmd
 }

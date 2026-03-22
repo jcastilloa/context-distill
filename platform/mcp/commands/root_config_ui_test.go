@@ -27,6 +27,8 @@ func TestRootCommandRunsConfigUIWhenFlagEnabled(t *testing.T) {
 		uiRunner,
 		tools.DistillBatch{},
 		tools.DistillWatch{},
+		nil,
+		nil,
 	)
 
 	cmd := runner.newRootCommand()
@@ -49,6 +51,8 @@ func TestRootCommandReturnsConfigUIError(t *testing.T) {
 		uiRunner,
 		tools.DistillBatch{},
 		tools.DistillWatch{},
+		nil,
+		nil,
 	)
 
 	cmd := runner.newRootCommand()
