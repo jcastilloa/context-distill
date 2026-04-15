@@ -8,7 +8,7 @@ A Go tool that **distills command output** before it reaches a paid LLM. Availab
 
 | Mode | Best for | How it works |
 |---|---|---|
-| **Skill** ⭐ (recommended) | Any agent that can read markdown and run shell commands | The agent reads a `SKILL.md` file and learns when and how to invoke the CLI. Zero config on the agent side. |
+| **Skill** ⭐ (recommended) | Any agent that can read markdown and run shell commands | The agent reads a `SKILL.md` file from its own skills directory and learns when and how to invoke the CLI. Zero config on the agent side. |
 | **CLI** | Local scripts, CI pipelines, shell-capable agents | Direct subcommands: `context-distill distill_batch`, `context-distill distill_watch`. |
 | **MCP** | Agents/clients with native MCP support (Claude Desktop, Cursor, Codex…) | Runs as an MCP server over `stdio` transport. |
 
@@ -29,9 +29,9 @@ It also provides:
 
 | | Skill | CLI | MCP |
 |---|---|---|---|
-| Agent config required | **None** — just drop `SKILL.md` | Agent must know how to run shell commands | Register server in client config |
+| Agent config required | **None** — just drop `SKILL.md` in the agent's skills directory | Agent must know how to run shell commands | Register server in client config |
 | Works across agents | ✅ Any agent that reads markdown | ✅ Any agent that runs shell | ⚠️ Only MCP-compatible clients |
-| Setup complexity | Copy one file | Install binary | Install binary + register transport |
+| Setup complexity | Copy one file per agent | Install binary | Install binary + register transport |
 | Portability | Works in any repo | Works in any shell | Tied to MCP client config |
 
 Skill mode works because modern coding agents (Codex, Claude Code, Cursor, Aider, OpenCode…) already know how to read project documentation and execute shell commands. A `SKILL.md` file teaches the agent **when** to distill and **how** to call the CLI — no protocol integration needed.
@@ -137,7 +137,7 @@ If both return a distilled answer, you are ready.
 
 #### ⭐ Skill mode (recommended)
 
-Copy `SKILL.md` (see [Skill Setup](#skill-setup-recommended)) into your project root or `~/.skills/`. Your agent will read it automatically and start distilling.
+Copy `SKILL.md` into the appropriate agent skills directory (see [Skill Setup](#skill-setup-recommended)). Your agent will read it automatically and start distilling.
 
 #### CLI mode
 
@@ -168,24 +168,40 @@ Then register the server in your MCP client (see [MCP Client Registration](#mcp-
 
 ### What is a Skill?
 
-A skill is a `SKILL.md` file that an agent reads on demand to learn a new capability. The agent discovers the file, reads the instructions, and knows **when** to activate and **what commands** to run. No protocol config, no server registration.
+A skill is a `SKILL.md` file placed inside an agent's skills directory. The agent discovers it, reads the instructions, and learns **when** to activate and **what commands** to run. No protocol config, no server registration.
 
-### Install the Skill
+### Where to install the Skill
 
-**Option A — Per-project (recommended for teams):**
+Each agent has its own skills directory. Install the `SKILL.md` at project level, global level, or both:
 
-Copy the `SKILL.md` template below into your project root. Every agent working on this repo will pick it up.
+| Agent | Project-level path | Global path |
+|---|---|---|
+| **Claude Code** | `.claude/skills/context-distill/SKILL.md` | `~/.claude/skills/context-distill/SKILL.md` |
+| **Codex** | `.codex/skills/context-distill/SKILL.md` | `~/.codex/skills/context-distill/SKILL.md` |
+| **OpenCode** | `.opencode/skills/context-distill/SKILL.md` | `~/.opencode/skills/context-distill/SKILL.md` |
+| **Cursor** | `.cursor/skills/context-distill/SKILL.md` | `~/.cursor/skills/context-distill/SKILL.md` |
 
-**Option B — Global (recommended for personal use):**
+**Project-level** (recommended for teams): every agent working on the repo picks it up automatically.
+
+**Global** (recommended for personal use): available in every project without per-repo setup.
+
+#### Quick install example (Claude Code, project-level)
 
 ```bash
-mkdir -p ~/.skills
-# Copy the SKILL.md content into ~/.skills/context-distill.skill.md
+mkdir -p .claude/skills/context-distill
+cp SKILL.md .claude/skills/context-distill/SKILL.md
+```
+
+#### Quick install example (all agents, global)
+
+```bash
+for agent in .claude .codex .opencode .cursor; do
+  mkdir -p ~/"$agent"/skills/context-distill
+  cp SKILL.md ~/"$agent"/skills/context-distill/SKILL.md
+done
 ```
 
 ### SKILL.md
-
-Create this file in your project root (or `~/.skills/context-distill.skill.md` for global use):
 
 ````markdown
 # Skill: context-distill
@@ -805,7 +821,7 @@ go test -tags=live ./platform/di -run TestLiveDistillBatchWithOpenAICompatiblePr
 | MCP client does not detect the server | Confirm the binary path is absolute, has execute permissions, and transport is `stdio`. |
 | Server fails on config validation | Run `--config-ui` for initial setup, then start normally. |
 | CLI command returns non-zero exit code | Check that all required flags (`--question`, `--input` or `--previous-cycle`/`--current-cycle`) are provided and non-empty. |
-| Agent ignores `SKILL.md` | Ensure the file is in the project root or in `~/.skills/`. Some agents require explicit instructions to read skill files. |
+| Agent ignores `SKILL.md` | Ensure the file is placed inside the correct agent skills directory (e.g. `.claude/skills/context-distill/SKILL.md`). See the [Skill Setup](#skill-setup-recommended) table for all paths. |
 
 ## Security
 
