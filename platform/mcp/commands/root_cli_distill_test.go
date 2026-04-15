@@ -102,7 +102,7 @@ func TestRootCommandDistillBatchReturnsUseCaseError(t *testing.T) {
 	}
 }
 
-func TestRootCommandDistillBatchRequiresQuestionAndInput(t *testing.T) {
+func TestRootCommandDistillBatchRequiresQuestion(t *testing.T) {
 	runner := NewRunner(
 		"context-distill",
 		configDomain.ServiceConfig{Version: "test", Transport: "stdio"},
@@ -123,6 +123,98 @@ func TestRootCommandDistillBatchRequiresQuestionAndInput(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "required flag") {
 		t.Fatalf("expected required flag error, got %v", err)
+	}
+}
+
+func TestRootCommandDistillBatchReadsInputFromStdin(t *testing.T) {
+	batchUseCase := &fakeDistillBatchUseCase{result: distillapp.DistillBatchResult{Output: "FAIL\n"}}
+	runner := NewRunner(
+		"context-distill",
+		configDomain.ServiceConfig{Version: "test", Transport: "stdio"},
+		nil,
+		&fakeConfigUIRunner{},
+		tools.DistillBatch{},
+		tools.DistillWatch{},
+		batchUseCase,
+		&fakeDistillWatchUseCase{},
+	)
+
+	stdinContent := "PASS: TestA, FAIL: TestB - expected 4 got 5"
+	stdout := &bytes.Buffer{}
+	cmd := runner.newRootCommand()
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetIn(strings.NewReader(stdinContent))
+	cmd.SetArgs([]string{"distill_batch", "--question", "Did tests pass?"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if batchUseCase.request.Input != stdinContent {
+		t.Fatalf("expected input from stdin %q, got %q", stdinContent, batchUseCase.request.Input)
+	}
+	if stdout.String() != "FAIL\n" {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+}
+
+func TestRootCommandDistillBatchInputDashReadsFromStdin(t *testing.T) {
+	batchUseCase := &fakeDistillBatchUseCase{result: distillapp.DistillBatchResult{Output: "ok\n"}}
+	runner := NewRunner(
+		"context-distill",
+		configDomain.ServiceConfig{Version: "test", Transport: "stdio"},
+		nil,
+		&fakeConfigUIRunner{},
+		tools.DistillBatch{},
+		tools.DistillWatch{},
+		batchUseCase,
+		&fakeDistillWatchUseCase{},
+	)
+
+	stdinContent := "piped data from stdin"
+	stdout := &bytes.Buffer{}
+	cmd := runner.newRootCommand()
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetIn(strings.NewReader(stdinContent))
+	cmd.SetArgs([]string{"distill_batch", "--question", "summarize", "--input", "-"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if batchUseCase.request.Input != stdinContent {
+		t.Fatalf("expected input from stdin %q, got %q", stdinContent, batchUseCase.request.Input)
+	}
+}
+
+func TestRootCommandDistillBatchFlagInputTakesPrecedenceOverStdin(t *testing.T) {
+	batchUseCase := &fakeDistillBatchUseCase{result: distillapp.DistillBatchResult{Output: "done\n"}}
+	runner := NewRunner(
+		"context-distill",
+		configDomain.ServiceConfig{Version: "test", Transport: "stdio"},
+		nil,
+		&fakeConfigUIRunner{},
+		tools.DistillBatch{},
+		tools.DistillWatch{},
+		batchUseCase,
+		&fakeDistillWatchUseCase{},
+	)
+
+	stdout := &bytes.Buffer{}
+	cmd := runner.newRootCommand()
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetIn(strings.NewReader("stdin data that should be ignored"))
+	cmd.SetArgs([]string{"distill_batch", "--question", "q", "--input", "flag data"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if batchUseCase.request.Input != "flag data" {
+		t.Fatalf("expected flag input %q, got %q", "flag data", batchUseCase.request.Input)
 	}
 }
 

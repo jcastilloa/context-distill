@@ -120,9 +120,14 @@ func (r Runner) newDistillBatchCommand() *cobra.Command {
 		Use:   "distill_batch",
 		Short: "Distill command output for one question",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			resolvedInput, err := resolveInput(input, cmd.InOrStdin())
+			if err != nil {
+				return err
+			}
+
 			result, err := r.distillBatchUseCase.Execute(cmd.Context(), distillapp.DistillBatchRequest{
 				Question: question,
-				Input:    input,
+				Input:    resolvedInput,
 			})
 			if err != nil {
 				return err
@@ -134,9 +139,8 @@ func (r Runner) newDistillBatchCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&question, "question", "", "Exact question to answer from the command output")
-	cmd.Flags().StringVar(&input, "input", "", "Raw command output to distill")
+	cmd.Flags().StringVar(&input, "input", "", "Raw command output to distill (reads from stdin if omitted or \"-\")")
 	_ = cmd.MarkFlagRequired("question")
-	_ = cmd.MarkFlagRequired("input")
 
 	return cmd
 }
