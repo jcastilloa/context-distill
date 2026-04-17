@@ -204,32 +204,47 @@ done
 ### SKILL.md
 
 ````markdown
-# Skill: context-distill
+---
+name: context-distill
+description: >
+  Distills verbose command output (logs, test results, diffs, status checks) into
+  short, structured answers before sending them to an LLM. Saves tokens, reduces
+  noise, and keeps context windows clean.
+  Use before sending command output longer than 5–8 lines, after tests/builds/linters/git
+  commands/docker logs, when comparing watch-mode snapshots, or whenever unsure whether
+  to distill.
+---
 
-## Description
+Distill verbose CLI output before passing to LLM. Keep signal. Drop noise.
 
-Distills verbose command output (logs, test results, diffs, status checks) into
-short, structured answers before sending them to an LLM. Saves tokens, reduces
-noise, and keeps context windows clean.
+## Activation
 
-## When to activate
+Use BEFORE sending any command output longer than 5–8 lines to LLM.
 
-- BEFORE sending any command output longer than 5–8 lines to the LLM.
-- AFTER running tests, builds, linters, git commands, docker logs, or any
-  verbose CLI tool.
-- When comparing two snapshots of the same source (watch mode).
-- When unsure whether to distill: **always distill** — unnecessary calls
-  cost ≈ 0; flooding context is expensive.
+Use AFTER:
+- tests
+- builds
+- linters
+- git commands
+- docker logs
+- any verbose CLI tool
 
-## When to skip
+Use when:
+- comparing two snapshots of same source in watch mode
+- unsure whether to distill
 
-- Output is ≤ 5–8 lines and already human-readable.
-- Exact raw bytes are required (audit / compliance / binary integrity).
-- Interactive terminal debugging where character-by-character flow matters.
+Default rule: **always distill**. Unnecessary distill cost ≈ 0. Flooding context expensive.
+
+## Skip
+
+Do not use when:
+- output is ≤ 5–8 lines and already human-readable
+- exact raw bytes required (audit / compliance / binary integrity)
+- interactive terminal debugging needs character-by-character flow
 
 ## Commands
 
-### Distill full output (batch)
+### Distill full output
 
 ```bash
 # Pipe — preferred
@@ -242,7 +257,7 @@ context-distill distill_batch --question "<question with output contract>" --inp
 <command> | context-distill distill_batch --question "<question with output contract>" --input -
 ```
 
-### Distill delta between two snapshots (watch)
+### Distill delta between two snapshots
 
 ```bash
 context-distill distill_watch \
@@ -253,21 +268,30 @@ context-distill distill_watch \
 
 ## Rules
 
-1. **Every call MUST include an output contract in `--question`** — tell the
-   distiller the exact return format: `"PASS or FAIL"`, `"valid JSON {severity, file, message}"`,
-   `"filenames, one per line"`, etc.
-2. **One task per call.** Never mix unrelated questions.
-3. **Prefer machine-checkable formats** (PASS/FAIL, JSON, one-item-per-line).
+1. **Every call MUST include an output contract in `--question`.**
+   Say exact return format:
+   - `PASS or FAIL`
+   - `valid JSON {severity, file, message}`
+   - `filenames, one per line`
+
+2. **One task per call.**
+   Do not mix unrelated questions.
+
+3. **Prefer machine-checkable formats.**
+   Use:
+   - PASS/FAIL
+   - JSON
+   - one-item-per-line
 
 ## Examples
 
-| Source command      | Question                                                                              |
-|---------------------|---------------------------------------------------------------------------------------|
-| `go test ./...`     | `"Did all tests pass? PASS or FAIL. If FAIL, list failing test names, one per line."` |
-| `git diff`          | `"List only changed file paths, one per line."`                                       |
-| CI / build logs     | `"Return JSON array: [{severity, file, message}]."`                                  |
-| `docker logs`       | `"Summarise errors only. One bullet per distinct error."`                             |
-| `find` / `ls -lR`   | `"Return only *.go paths, one per line."`                                             |
+| Source command    | Question                                                                              |
+|-------------------|```-------|
+| `go test ./...`   | `"Did all tests pass? PASS or FAIL. If FAIL, list failing test names, one per line."` |
+| `git diff`        | `"List only changed file paths, one per line."`                                       |
+| CI / build logs   | `"Return JSON array: [{severity, file, message}]."`                                   |
+| `docker logs`     | `"Summarise errors only. One bullet per distinct error."`                             |
+| `find` / `ls -lR` | `"Return only *.go paths, one per line."`                                             |
 
 ### Watch examples
 
@@ -280,7 +304,7 @@ context-distill distill_watch \
 
 If installed via `make install`: `~/.local/bin/context-distill`
 
-If the binary is not in PATH, use the absolute path.
+If binary not in PATH, use absolute path.
 ````
 
 ---
@@ -666,7 +690,7 @@ context is expensive.
 ### `distill_batch` examples
 
 | Source command    | `question`                                                                          |
-|-------------------|-------------------------------------------------------------------------------------|
+|-------------------|```-----|
 | `go test ./...`   | "Did all tests pass? PASS or FAIL. If FAIL, list failing test names, one per line." |
 | `git diff`        | "List only changed file paths, one per line."                                       |
 | CI / build logs   | "Return JSON array: `[{severity, file, message}]`."                                |
