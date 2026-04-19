@@ -53,6 +53,7 @@ context-distill/
 
 Included example:
 - Tools `distill_batch` and `distill_watch`.
+- New retrieval tool: `search_code`.
 
 ## DI Labels Rule
 
@@ -164,3 +165,25 @@ Skip the call **only** when one of these is true:
   character-by-character flow matters.
 
 In every other case, distill first.
+
+### Code exploration behavior: prefer `search_code` first
+
+Before opening many files, use `search_code` when task is locating:
+- symbol definitions/usages
+- config loading points
+- entrypoints
+- provider-related code
+
+`search_code` rules:
+
+1. Every call must include `question` with explicit output contract.
+2. Use one mode per call: `text | regex | symbol | path`.
+3. Keep output machine-checkable when possible (JSON, `file:line`, one-per-line).
+
+Examples:
+
+- `context-distill search_code --query "provider_name" --mode text --question "Return only file:line, one per line."`
+- `context-distill search_code --query "LoadDistillConfig" --mode symbol --question "Return likely definitions first as file:line, one per line."`
+
+
+Use Caveman Sill

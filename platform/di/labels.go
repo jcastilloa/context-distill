@@ -10,6 +10,9 @@ const (
 	DistillSummarizerRepositoryLabel = "distill.summarizer.repository"
 	DistillBatchUseCaseLabel         = "distill.batch.usecase"
 	DistillWatchUseCaseLabel         = "distill.watch.usecase"
+	SearchCodeSearcherLabel          = "distill.search_code.searcher"
+	SearchCodeUseCaseLabel           = "distill.search_code.usecase"
 	DistillBatchToolLabel            = "distill.batch.tool"
 	DistillWatchToolLabel            = "distill.watch.tool"
+	SearchCodeToolLabel              = "distill.search_code.tool"
 )

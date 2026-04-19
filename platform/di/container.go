@@ -2,11 +2,13 @@ package di
 
 import (
 	"fmt"
+	"os"
 
 	distillApp "github.com/jcastilloa/context-distill/distill/application/distillation"
 	distillDomain "github.com/jcastilloa/context-distill/distill/domain"
 	"github.com/jcastilloa/context-distill/platform/configui"
 	"github.com/jcastilloa/context-distill/platform/mcp/commands"
+	platformsearch "github.com/jcastilloa/context-distill/platform/mcp/search"
 	mcpserver "github.com/jcastilloa/context-distill/platform/mcp/server"
 	"github.com/jcastilloa/context-distill/platform/mcp/tools"
 	aiDomain "github.com/jcastilloa/context-distill/shared/ai/domain"
@@ -108,6 +110,26 @@ func (c *Container) Build() (*di.Container, error) {
 			},
 		},
 		di.Def{
+			Name:  SearchCodeSearcherLabel,
+			Scope: di.App,
+			Build: func(ctn di.Container) (interface{}, error) {
+				workDir, err := os.Getwd()
+				if err != nil {
+					workDir = "."
+				}
+				return platformsearch.NewRipgrepSearcher(workDir), nil
+			},
+		},
+		di.Def{
+			Name:  SearchCodeUseCaseLabel,
+			Scope: di.App,
+			Build: func(ctn di.Container) (interface{}, error) {
+				searcher := ctn.Get(SearchCodeSearcherLabel).(distillApp.SearchCodeSearcher)
+				distiller := ctn.Get(DistillBatchUseCaseLabel).(*distillApp.DistillBatchUseCase)
+				return distillApp.NewSearchCodeUseCase(searcher, distiller), nil
+			},
+		},
+		di.Def{
 			Name:  DistillBatchToolLabel,
 			Scope: di.App,
 			Build: func(ctn di.Container) (interface{}, error) {
@@ -121,6 +143,14 @@ func (c *Container) Build() (*di.Container, error) {
 			Build: func(ctn di.Container) (interface{}, error) {
 				useCase := ctn.Get(DistillWatchUseCaseLabel).(*distillApp.DistillWatchUseCase)
 				return tools.NewDistillWatch(useCase), nil
+			},
+		},
+		di.Def{
+			Name:  SearchCodeToolLabel,
+			Scope: di.App,
+			Build: func(ctn di.Container) (interface{}, error) {
+				useCase := ctn.Get(SearchCodeUseCaseLabel).(*distillApp.SearchCodeUseCase)
+				return tools.NewSearchCode(useCase), nil
 			},
 		},
 		di.Def{
@@ -138,8 +168,10 @@ func (c *Container) Build() (*di.Container, error) {
 				configUIRunner := ctn.Get(ConfigUIRunnerLabel).(commands.ConfigUIRunner)
 				distillBatchTool := ctn.Get(DistillBatchToolLabel).(tools.DistillBatch)
 				distillWatchTool := ctn.Get(DistillWatchToolLabel).(tools.DistillWatch)
+				searchCodeTool := ctn.Get(SearchCodeToolLabel).(tools.SearchCode)
 				distillBatchUseCase := ctn.Get(DistillBatchUseCaseLabel).(*distillApp.DistillBatchUseCase)
 				distillWatchUseCase := ctn.Get(DistillWatchUseCaseLabel).(*distillApp.DistillWatchUseCase)
+				searchCodeUseCase := ctn.Get(SearchCodeUseCaseLabel).(*distillApp.SearchCodeUseCase)
 				return commands.NewRunner(
 					c.serviceName,
 					c.serviceCfg,
@@ -149,7 +181,7 @@ func (c *Container) Build() (*di.Container, error) {
 					distillWatchTool,
 					distillBatchUseCase,
 					distillWatchUseCase,
-				), nil
+				).WithSearchCode(searchCodeTool, searchCodeUseCase), nil
 			},
 		},
 	)

@@ -50,12 +50,20 @@ func TestContainerBuildRegistersDistillDependencies(t *testing.T) {
 		t.Fatalf("distill watch use case is not registered")
 	}
 
+	if _, ok := (*container).Get(SearchCodeUseCaseLabel).(*distillapp.SearchCodeUseCase); !ok {
+		t.Fatalf("search code use case is not registered")
+	}
+
 	if _, ok := (*container).Get(DistillBatchToolLabel).(tools.DistillBatch); !ok {
 		t.Fatalf("distill batch tool is not registered")
 	}
 
 	if _, ok := (*container).Get(DistillWatchToolLabel).(tools.DistillWatch); !ok {
 		t.Fatalf("distill watch tool is not registered")
+	}
+
+	if _, ok := (*container).Get(SearchCodeToolLabel).(tools.SearchCode); !ok {
+		t.Fatalf("search code tool is not registered")
 	}
 
 	if _, ok := (*container).Get(ConfigUIRunnerLabel).(commands.ConfigUIRunner); !ok {
