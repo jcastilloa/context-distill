@@ -287,12 +287,7 @@ context-distill search_code \
   --context-lines 2
 ```
 
-CLI syntax rules (critical):
-- Always call the binary: `context-distill search_code ...`
-- Always use flags: `--query`, `--mode`, `--question`, `--max-results`, `--context-lines`
-- Invalid shell syntax: `search_code mode=text query="..." max_results=5 context_lines=1`
-- Valid shell syntax: `context-distill search_code --mode text --query "..." --max-results 5 --context-lines 1 --question "..."`
-- For `--mode path`, `--query` is a path fragment (example: `.go`), not a glob pattern. Use `--scope` for globs (example: `--scope "**/*.go"`).
+Use CLI flags only (`--query`, `--mode`, `--question`, `--max-results`, `--context-lines`); do not use shell args like `search_code mode=text query=...`.
 
 ## Rules
 
@@ -335,9 +330,6 @@ CLI syntax rules (critical):
 | `symbol` | `"Return likely definitions first as file:line, one per line."` |
 | `text` | `"Return top 10 matches as JSON array [{file,line,snippet}]."` |
 | `path` | `"Return matching file paths only, one per line."` |
-
-Path mode command example:
-`context-distill search_code --mode path --query ".go" --scope "**/*.go" --max-results 5 --question "Return matching file paths only, one per line."`
 
 ## Binary location
 
