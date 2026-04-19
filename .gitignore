@@ -1,7 +1,6 @@
 .idea
 config.yaml
 .claude
-.codex
 .opencode
 bin
 dist
