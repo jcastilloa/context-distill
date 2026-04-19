@@ -4,43 +4,43 @@ A Go tool that **distills command output and retrieves code context** before it 
 
 ## Overview
 
-`context-distill` exposes three operations accessible in **three ways**:
+`context-distill` exposes three operations accessible in three ways:
 
 | Mode | Best for | How it works |
 |---|---|---|
-| **Skill** ⭐ (recommended) | Any agent that can read markdown and run shell commands | The agent reads a `SKILL.md` file from its own skills directory and learns when and how to invoke the CLI. Zero config on the agent side. |
-| **CLI** | Local scripts, CI pipelines, shell-capable agents | Direct subcommands: `context-distill distill_batch`, `context-distill distill_watch`, `context-distill search_code`. |
-| **MCP** | Agents/clients with native MCP support (Claude Desktop, Cursor, Codex…) | Runs as an MCP server over `stdio` transport. |
+| **Skill** ⭐ (recommended) | Any agent that reads markdown and runs shell commands | The agent reads a `SKILL.md` file from its skills directory and learns when and how to invoke the CLI. Zero config. |
+| **CLI** | Local scripts, CI pipelines, shell-capable agents | Direct subcommands: `distill_batch`, `distill_watch`, `search_code`. |
+| **MCP** | Agents with native MCP support (Claude Desktop, Cursor, Codex…) | MCP server over `stdio` transport. |
 
 | Operation | Purpose |
 |---|---|
 | `distill_batch` | Compresses full command output to answer a single, explicit question. |
 | `distill_watch` | Compares two consecutive snapshots and returns only the relevant delta. |
-| `search_code` | Locates relevant repository code and returns compact matches for the next reasoning step. |
+| `search_code` | Locates relevant repository code and returns compact matches. |
 
-All three modes share the same underlying use cases, validation rules, and output behavior — only the invocation method differs.
+All three modes share the same use cases, validation rules, and output behavior — only the invocation method differs.
 
-It also provides:
+Additionally:
 
 - LLM provider configuration via YAML and environment variables.
-- An interactive terminal UI for first-time setup (`--config-ui`).
+- Interactive terminal UI for first-time setup (`--config-ui`).
 - Support for Ollama and any OpenAI-compatible provider.
 
-## Why Skill Mode Is Recommended
+### Why Skill Mode Is Recommended
 
 | | Skill | CLI | MCP |
 |---|---|---|---|
-| Agent config required | **None** — just drop `SKILL.md` in the agent's skills directory | Agent must know how to run shell commands | Register server in client config |
+| Agent config required | **None** — drop `SKILL.md` in the agent's skills directory | Agent must know how to run shell commands | Register server in client config |
 | Works across agents | ✅ Any agent that reads markdown | ✅ Any agent that runs shell | ⚠️ Only MCP-compatible clients |
-| Setup complexity | Copy one file per agent | Install binary | Install binary + register transport |
+| Setup complexity | Copy one file | Install binary | Install binary + register transport |
 | Portability | Works in any repo | Works in any shell | Tied to MCP client config |
 
-Skill mode works because modern coding agents (Codex, Claude Code, Cursor, Aider, OpenCode…) already know how to read project documentation and execute shell commands. A `SKILL.md` file teaches the agent **when** to distill or retrieve code context and **how** to call the CLI — no protocol integration needed.
+Skill mode works because modern coding agents (Codex, Claude Code, Cursor, Aider, OpenCode…) already read project documentation and execute shell commands. A `SKILL.md` file teaches the agent **when** and **how** to call the CLI — no protocol integration needed.
 
 ## Features
 
-- **Triple interface** — Skill file for zero-config agent adoption + CLI for direct shell use + MCP tools for protocol-native clients.
-- **Three core operations** — `distill_batch`, `distill_watch`, and `search_code`.
+- **Triple interface** — Skill (zero-config) + CLI (shell) + MCP (protocol-native).
+- **Three core operations** — `distill_batch`, `distill_watch`, `search_code`.
 - **Hexagonal architecture** — `distill/domain`, `distill/application`, `platform/*`.
 - **Dependency injection** via `sarulabs/di`.
 - **Config management** with `viper` + `.env`.
@@ -53,44 +53,32 @@ Skill mode works because modern coding agents (Codex, Claude Code, Cursor, Aider
 - Go **1.26+**
 - Make (recommended)
 
-If you prefer not to compile, you can install a prebuilt binary from GitHub Releases (see below).
+Prebuilt binaries are also available from GitHub Releases (see [Installation](#installation)).
 
 ## Installation
 
 ### Option A: Build from source
 
 ```bash
-make build
+make build          # → ./bin/context-distill
+make install        # → ~/.local/bin/context-distill
 ```
 
-The binary is placed at `./bin/context-distill`.
-
-To install it into your PATH:
-
-```bash
-make install
-# installs to ~/.local/bin/context-distill
-```
-
-### Option B: Prebuilt binary (no build required)
+### Option B: Prebuilt binary
 
 **Linux / macOS:**
 
 ```bash
-# Latest release
 curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | sh
-
-# Specific version
+# Specific version:
 curl -fsSL https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.sh | VERSION=vX.Y.Z sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-# Latest release
 iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
-
-# Specific version
+# Specific version:
 $env:VERSION='vX.Y.Z'; iwr https://raw.githubusercontent.com/jcastilloa/context-distill/master/scripts/install.ps1 -UseBasicParsing | iex
 ```
 
@@ -103,85 +91,46 @@ $env:VERSION='vX.Y.Z'; iwr https://raw.githubusercontent.com/jcastilloa/context-
 | `INSTALL_DIR` | `~/.local/bin` (Linux/macOS) · `%LOCALAPPDATA%\context-distill\bin` (Windows) |
 | `VERSION` | Latest release tag |
 
-## Makefile Targets
-
-```bash
-make help
-```
+### Makefile Targets
 
 | Target | Description |
 |---|---|
-| `make build` | Build the binary to `./bin/context-distill` |
-| `make install` | Install binary to `~/.local/bin/context-distill` |
+| `make build` | Build binary to `./bin/context-distill` |
+| `make install` | Install to `~/.local/bin/context-distill` |
 | `make clean` | Remove `./bin` |
 
 ## Quick Start
 
-### 1. Configure the provider (all modes)
-
 ```bash
+# 1. Configure provider
 context-distill --config-ui
+
+# 2. Verify
+echo "PASS: TestA, PASS: TestB, FAIL: TestC - expected 4 got 5" \
+  | context-distill distill_batch --question "Did tests pass? PASS or FAIL. If FAIL, list failing test names."
+
+context-distill distill_watch \
+  --question "What changed? One short sentence." \
+  --previous-cycle "services: api=OK, db=OK, cache=OK" \
+  --current-cycle "services: api=OK, db=FAIL, cache=OK"
+
+context-distill search_code --query "provider_name" --mode text \
+  --question "Return only file:line, one per line."
 ```
 
-### 2. Verify it works
+If commands return expected compact answers, setup is ready. Then choose your mode:
 
-```bash
-echo "PASS: TestA, PASS: TestB, FAIL: TestC - expected 4 got 5" | context-distill distill_batch --question "Did tests pass? Return only PASS or FAIL. If FAIL, list failing test names."
-```
-
-```bash
-context-distill distill_watch --question "What changed? Return one short sentence." --previous-cycle "services: api=OK, db=OK, cache=OK" --current-cycle "services: api=OK, db=FAIL, cache=OK"
-```
-
-```bash
-context-distill search_code --query "provider_name" --mode text --question "Return only file:line, one per line."
-```
-
-If commands return expected compact answers, setup is ready.
-
-### 3. Choose your mode
-
-#### ⭐ Skill mode (recommended)
-
-Copy `SKILL.md` into the appropriate agent skills directory (see [Skill Setup](#skill-setup-recommended)). Your agent will read it automatically and start distilling.
-
-#### CLI mode
-
-Use the subcommands directly in scripts or agent shell calls:
-
-```bash
-# Pipe (preferred)
-echo "data" | context-distill distill_batch --question "..."
-
-# Explicit flag
-context-distill distill_batch --question "..." --input "data"
-
-# Explicit stdin marker
-echo "data" | context-distill distill_batch --question "..." --input -
-
-# Code retrieval
-context-distill search_code --query "LoadDistillConfig" --mode symbol --question "Return likely definitions first as file:line, one per line."
-```
-
-#### MCP mode
-
-```bash
-context-distill --transport stdio
-```
-
-Then register the server in your MCP client (see [MCP Client Registration](#mcp-client-registration)).
+- **Skill** ⭐ — Copy `SKILL.md` into the agent's skills directory (see [Skill Setup](#skill-setup-recommended)).
+- **CLI** — Use subcommands directly (see [CLI Reference](#cli-reference)).
+- **MCP** — Run `context-distill --transport stdio` and register the server (see [MCP Server Mode](#mcp-server-mode)).
 
 ---
 
 ## Skill Setup (Recommended)
 
-### What is a Skill?
-
 A skill is a `SKILL.md` file placed inside an agent's skills directory. The agent discovers it, reads the instructions, and learns **when** to activate and **what commands** to run. No protocol config, no server registration.
 
-### Where to install the Skill
-
-Each agent has its own skills directory. Install the `SKILL.md` at project level, global level, or both:
+### Where to install
 
 | Agent | Project-level path | Global path |
 |---|---|---|
@@ -190,27 +139,24 @@ Each agent has its own skills directory. Install the `SKILL.md` at project level
 | **OpenCode** | `.opencode/skills/context-distill/SKILL.md` | `~/.opencode/skills/context-distill/SKILL.md` |
 | **Cursor** | `.cursor/skills/context-distill/SKILL.md` | `~/.cursor/skills/context-distill/SKILL.md` |
 
-**Project-level** (recommended for teams): every agent working on the repo picks it up automatically.
-
-**Global** (recommended for personal use): available in every project without per-repo setup.
-
-#### Quick install example (Claude Code, project-level)
+**Project-level** (teams): every agent working on the repo picks it up.
+**Global** (personal): available in every project without per-repo setup.
 
 ```bash
+# Single agent, project-level (e.g. Claude Code)
 mkdir -p .claude/skills/context-distill
 cp SKILL.md .claude/skills/context-distill/SKILL.md
-```
 
-#### Quick install example (all agents, global)
-
-```bash
+# All agents, global
 for agent in .claude .codex .opencode .cursor; do
   mkdir -p ~/"$agent"/skills/context-distill
   cp SKILL.md ~/"$agent"/skills/context-distill/SKILL.md
 done
 ```
 
-### SKILL.md
+### SKILL.md contents
+
+> The full `SKILL.md` is maintained as a standalone file in the repository root. Below is the reference copy.
 
 ````markdown
 ---
@@ -338,41 +284,38 @@ If binary not in PATH, use absolute path.
 
 ---
 
-## CLI Commands Reference
-
-The CLI commands provide the same capabilities as the MCP tools (distillation + code retrieval) but are invoked directly from the shell. Use them in local scripts, CI pipelines, or with agent runtimes that execute shell commands instead of MCP tools.
+## CLI Reference
 
 ### Input methods
 
 ```bash
-# 1. Pipe (preferred)
-echo "data" | context-distill distill_batch --question "..."
-
-# 2. Explicit flag
-context-distill distill_batch --question "..." --input "data"
-
-# 3. Explicit stdin marker
-echo "data" | context-distill distill_batch --question "..." --input -
+echo "data" | context-distill distill_batch --question "..."   # Pipe (preferred)
+context-distill distill_batch --question "..." --input "data"   # Explicit flag
+echo "data" | context-distill distill_batch --question "..." --input -  # Explicit stdin marker
 ```
 
 ### `distill_batch`
 
 Distills one raw output payload using an explicit question contract.
 
+| Flag | Required | Description |
+|---|---|---|
+| `--question` | yes | Exact question to answer from the command output. |
+| `--input` | no | Raw command output. If omitted, reads from stdin. |
+
 ```bash
 go test ./... 2>&1 | context-distill distill_batch --question "Did all tests pass? Return only PASS or FAIL."
 ```
 
-Flags:
+### `distill_watch`
+
+Returns only the relevant delta between two snapshots.
 
 | Flag | Required | Description |
 |---|---|---|
-| `--question` | yes | Exact question to answer from the command output. |
-| `--input` | no | Raw command output to distill. If omitted, reads from stdin. |
-
-### `distill_watch`
-
-Distills only the relevant delta between two snapshots.
+| `--question` | yes | Exact question to answer from cycle changes. |
+| `--previous-cycle` | yes | Previous watch cycle output snapshot. |
+| `--current-cycle` | yes | Current watch cycle output snapshot. |
 
 ```bash
 context-distill distill_watch \
@@ -381,41 +324,29 @@ context-distill distill_watch \
   --current-cycle "$(cat /tmp/health.curr)"
 ```
 
-Flags:
-
-| Flag | Required | Description |
-|---|---|---|
-| `--question` | yes | Exact question to answer from cycle changes. |
-| `--previous-cycle` | yes | Previous watch cycle output snapshot. |
-| `--current-cycle` | yes | Current watch cycle output snapshot. |
-
 ### `search_code`
 
-Searches repository code locally and distills compact matches according to `--question`.
-
-```bash
-context-distill search_code \
-  --query "distill_watch" \
-  --mode symbol \
-  --question "Return definitions first, then usages, as file:line."
-```
-
-Flags:
+Searches repository code locally and distills compact matches.
 
 | Flag | Required | Description |
 |---|---|---|
-| `--query` | yes | Search query for text, regex, symbol name, or path fragment. |
+| `--query` | yes | Search query (text, regex, symbol name, or path fragment). |
 | `--mode` | yes | Search mode: `text`, `regex`, `symbol`, or `path`. |
-| `--question` | yes | Output contract for final compact result. |
-| `--scope` | no | Optional glob filters (repeat flag or comma-separated). |
+| `--question` | yes | Output contract for the result. |
+| `--scope` | no | Glob filters (repeat flag or comma-separated). |
 | `--max-results` | no | Hard limit for returned candidates (default `20`). |
 | `--context-lines` | no | Context lines around each match (default `2`). |
 
+```bash
+context-distill search_code \
+  --query "distill_watch" --mode symbol \
+  --question "Return definitions first, then usages, as file:line."
+```
+
 ### CLI Notes
 
-- CLI commands and MCP tools share the same underlying use cases and validation rules.
-- Invalid/missing inputs return a non-zero exit code.
-- Output is written to standard output exactly as produced by the selected use case.
+- Invalid or missing inputs return a non-zero exit code.
+- Output goes to stdout exactly as produced by the use case.
 
 ---
 
@@ -429,12 +360,6 @@ context-distill --transport stdio
 go run ./cmd/server --transport stdio
 ```
 
-### Version
-
-```bash
-go run ./cmd/server version
-```
-
 ### Server Flags
 
 | Flag | Description | Default |
@@ -442,9 +367,37 @@ go run ./cmd/server version
 | `--transport` | MCP transport mode (`stdio`) | `service.transport` |
 | `--config-ui` | Open setup UI and exit | `false` |
 
-### MCP Client Registration
+### MCP Tools
 
-After building or installing the binary, register it in your MCP client to use the tool interface.
+The MCP tools expose the same operations as the CLI over `stdio` transport.
+
+#### `distill_batch`
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `question` | string | yes | What to extract. Must include an output contract. |
+| `input` | string | yes | Raw command output to distill. |
+
+#### `distill_watch`
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `question` | string | yes | What delta to report. Must include an output contract. |
+| `previous_cycle` | string | yes | Snapshot from the previous cycle. |
+| `current_cycle` | string | yes | Snapshot from the current cycle. |
+
+#### `search_code`
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `query` | string | yes | Search query (text, regex, symbol, or path). |
+| `mode` | string | yes | `text`, `regex`, `symbol`, `path`. |
+| `question` | string | yes | Output contract for the response. |
+| `scope` | array[string] | no | Glob scope filters. |
+| `max_results` | number | no | Hard match limit (default `20`). |
+| `context_lines` | number | no | Context lines per match (default `2`). |
+
+### MCP Client Registration
 
 #### JSON-based clients (Claude Desktop, Cursor, etc.)
 
@@ -459,40 +412,24 @@ After building or installing the binary, register it in your MCP client to use t
 }
 ```
 
-#### Codex — manual TOML (recommended)
-
-Add to `~/.codex/config.toml`:
+#### Codex — TOML config (recommended)
 
 ```toml
+# ~/.codex/config.toml
 [mcp_servers.context-distill]
 command = "/absolute/path/to/context-distill"
 args = ["--transport", "stdio"]
 startup_timeout_sec = 20.0
 ```
 
-If you used `make install`:
-
-```toml
-[mcp_servers.context-distill]
-command = "/home/<your-user>/.local/bin/context-distill"
-args = ["--transport", "stdio"]
-startup_timeout_sec = 20.0
-```
-
-#### Codex — CLI registration
+Or via CLI:
 
 ```bash
 codex mcp add context-distill -- /absolute/path/to/context-distill --transport stdio
+codex mcp list        # verify
 ```
 
-Verify:
-
-```bash
-codex mcp list
-codex mcp get context-distill
-```
-
-Restart your Codex session so it picks up the new server.
+Restart the Codex session after registration.
 
 #### OpenCode — interactive CLI
 
@@ -500,22 +437,9 @@ Restart your Codex session so it picks up the new server.
 opencode mcp add
 ```
 
-Follow the prompts:
+Follow the prompts: **Location** → Current project or Global · **Name** → `context-distill` · **Type** → `local` · **Command** → `/absolute/path/to/context-distill --transport stdio`.
 
-1. **Location** → `Current project` or `Global`.
-2. **Name** → `context-distill`.
-3. **Type** → `local`.
-4. **Command** → `/absolute/path/to/context-distill --transport stdio`.
-
-Verify:
-
-```bash
-opencode mcp list
-```
-
-If the server is not connected yet, restart your OpenCode session.
-
-#### OpenCode — manual config (`opencode.json`)
+Or edit `opencode.json` directly:
 
 ```json
 {
@@ -534,43 +458,7 @@ If the server is not connected yet, restart your OpenCode session.
 
 - Always use an **absolute** binary path.
 - Always use `stdio` transport.
-- If the server does not appear, run `codex mcp list --json` to inspect the resolved config.
-
-### MCP Tools Reference
-
-The MCP tools expose the same capabilities as the CLI commands (distillation + code retrieval), but are consumed by MCP-compatible clients over the `stdio` transport.
-
-#### `distill_batch`
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `question` | string | yes | What to extract from the input. Must include an output contract. |
-| `input` | string | yes | Raw command output to distill. |
-
-Returns a short, focused answer to `question`.
-
-#### `distill_watch`
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `question` | string | yes | What delta to report. Must include an output contract. |
-| `previous_cycle` | string | yes | Snapshot from the previous cycle. |
-| `current_cycle` | string | yes | Snapshot from the current cycle. |
-
-Returns a short summary of relevant changes, or a no-change message when nothing meaningful differs.
-
-#### `search_code`
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `query` | string | yes | Search query for text, regex, symbol, or path. |
-| `mode` | string | yes | Search mode: `text`, `regex`, `symbol`, `path`. |
-| `question` | string | yes | Output contract for distilled response. |
-| `scope` | array[string] | no | Optional glob scope filters. |
-| `max_results` | number | no | Hard match limit (default `20`). |
-| `context_lines` | number | no | Context lines per match (default `2`). |
-
-Returns compact output controlled by `question`, after local repository retrieval.
+- If the server does not appear, inspect with `codex mcp list --json` or restart the agent session.
 
 ---
 
@@ -580,38 +468,21 @@ Returns compact output controlled by `question`, after local repository retrieva
 
 ```bash
 context-distill --config-ui
-# or without building:
-go run ./cmd/server --config-ui
 ```
-
-**Editable fields:**
 
 | Field | Notes |
 |---|---|
-| `provider_name` | Dropdown list of supported providers. |
+| `provider_name` | Dropdown of supported providers. |
 | `base_url` | Required for OpenAI-compatible providers. |
 | `api_key` | Masked input. Required for `openai`, `openrouter`, `jan`. |
 
-**Validation rules:**
+**Validation:** providers requiring an API key block save until one is entered. OpenAI-compatible providers require `base_url`. Provider aliases are normalized (e.g. `OpenAI Compatible` → `openai-compatible`, `dmr` → `docker-model-runner`).
 
-- Providers that require an API key block save until one is entered.
-- OpenAI-compatible providers require a `base_url`.
-- Provider aliases are normalized automatically (e.g. `OpenAI Compatible` → `openai-compatible`, `dmr` → `docker-model-runner`).
-
-**Persisted config path:** `~/.config/context-distill/config.yaml`
-
-Save preserves existing YAML sections (`service`, `openai`, etc.) and updates only the relevant `distill` fields.
+**Config path:** `~/.config/context-distill/config.yaml`. Save preserves existing YAML sections and updates only the relevant `distill` fields.
 
 ### Manual YAML configuration
 
-You can also edit the config file directly.
-
-**Lookup order:**
-
-1. `~/.config/<service>/config.yaml`
-2. `./config.yaml`
-
-**Example `config.yaml`:**
+**Lookup order:** `~/.config/<service>/config.yaml` → `./config.yaml`
 
 ```yaml
 service:
@@ -636,11 +507,11 @@ distill:
   thinking: false
 ```
 
-> **Note:** `service.version` is injected at build time from binary metadata and does not need to be set manually.
+> `service.version` is injected at build time and does not need to be set manually.
 
-## Provider Matrix
+### Provider Matrix
 
-| Provider | Transport | API Key Required | Default Base URL |
+| Provider | Transport | API Key | Default Base URL |
 |---|---|---|---|
 | `ollama` | native ollama | No | `http://127.0.0.1:11434` |
 | `openai` | openai-compatible | Yes | `https://api.openai.com/v1` |
@@ -655,51 +526,36 @@ distill:
 | `mlx-lm` | openai-compatible | No | — |
 | `docker-model-runner` | openai-compatible | No | `http://127.0.0.1:12434/engines/v1` |
 
+---
+
 ## Writing Good Questions
 
-The quality of distillation/search output depends on the `question` contract — whether invoked via Skill, CLI, or MCP. Be explicit about **what** you want and **in what format**.
+The quality of output depends on the `question` contract. Be explicit about **what** you want and **in what format**.
 
-### Bad questions
-
-- `"What happened?"`
-- `"Summarize this"`
-
-### Good questions
-
-- `"Did tests pass? Return only PASS or FAIL. If FAIL, list failing test names, one per line."`
-- `"List only changed file paths, one per line."`
-- `"Return valid JSON only with keys: severity, file, message."`
-
-### `distill_batch` examples
-
-| Source | Question |
+| ❌ Bad | ✅ Good |
 |---|---|
-| `go test ./...` | `"Did tests pass? Return only PASS or FAIL."` |
-| `git diff` | `"List changed files and one short reason per file. Max 10 lines."` |
-| CI logs | `"Return only blocking errors with file and line if available."` |
-
-### `distill_watch` examples
-
-| Snapshots | Question |
-|---|---|
-| Test watcher output at T−1 / T | `"What changed in failure count? Return one short sentence."` |
-| Deployment status at T−1 / T | `"Return only newly failing services, one per line."` |
-
-### `search_code` examples
-
-| Mode | Question |
-|---|---|
-| `text` | `"Return only file:line, one per line."` |
-| `symbol` | `"Return likely definitions first, then usages, as file:line."` |
-| `path` | `"Return matching file paths only, one per line."` |
+| `"What happened?"` | `"Did tests pass? Return only PASS or FAIL. If FAIL, list failing test names, one per line."` |
+| `"Summarize this"` | `"List only changed file paths, one per line."` |
+| | `"Return valid JSON only with keys: severity, file, message."` |
 
 ---
 
 ## AGENTS.md Templates
 
-If you prefer to embed instructions directly in your project's `AGENTS.md` instead of using a standalone `SKILL.md`, use one of the templates below.
+If you prefer to embed instructions in your project's `AGENTS.md` instead of using `SKILL.md`, use one of the templates below. All share a common base; only the invocation style and strictness differ.
 
-### AGENTS.md Template (CLI Mode)
+### Common rules (all modes)
+
+1. **Every call MUST include an output contract in `--question` / `question`** — exact return format (`PASS or FAIL`, `valid JSON {severity, file, message}`, `filenames, one per line`, etc.).
+2. **One task per call.** No mixing unrelated questions.
+3. **Prefer machine-checkable formats** (PASS/FAIL, JSON, one-item-per-line).
+
+**When to skip (exceptions only):**
+- Output is ≤ 5–8 lines and already human-readable.
+- Exact raw bytes required (audit / compliance / binary integrity).
+- Interactive terminal debugging where character-by-character flow matters.
+
+### Template: CLI Mode
 
 ````md
 ## context-distill CLI Usage
@@ -707,77 +563,36 @@ If you prefer to embed instructions directly in your project's `AGENTS.md` inste
 Default behavior: distill command output before sending it to the LLM.
 Use `search_code` before opening many files to locate symbols/usages/config paths.
 
-Use the local binary:
-- `context-distill distill_batch`
-- `context-distill distill_watch`
-- `context-distill search_code`
-
-### Rules
-
-1. Every invocation MUST include an output contract in `--question`.
-2. One task per call.
-3. Prefer machine-checkable formats (PASS/FAIL, JSON, one-item-per-line).
-
 ### CLI patterns
 
-#### Batch output
-
 ```bash
+# Batch
 go test ./... 2>&1 | context-distill distill_batch \
   --question "Did all tests pass? Return only PASS or FAIL. If FAIL, list failing tests one per line."
-```
 
-#### Snapshot delta
-
-```bash
+# Snapshot delta
 context-distill distill_watch \
   --question "Return only newly failing services, one per line." \
   --previous-cycle "$(cat /tmp/status.prev)" \
   --current-cycle "$(cat /tmp/status.curr)"
-```
 
-#### Code retrieval
-
-```bash
+# Code retrieval
 context-distill search_code \
-  --query "provider_name" \
-  --mode text \
+  --query "provider_name" --mode text \
   --question "Return only file:line, one per line."
 ```
-
-### When to skip distill (exceptions only)
-
-- Output is ≤ 5–8 lines and readable at a glance.
-- Exact raw bytes are required (audit/compliance/binary integrity).
-- Interactive terminal debugging where exact character flow matters.
 ````
 
-### AGENTS.md Template (MCP Mode)
+### Template: MCP Mode
 
 ````md
 ## context-distill MCP Usage
 
 **Default: ALWAYS distill.** Use `distill_batch` for ANY command output before
-sending it to the LLM. Skip ONLY if the output is ≤ 5–8 lines and readable at
-a glance. When unsure: **distill** — unnecessary calls cost ≈ 0; flooding
-context is expensive.
+sending it to the LLM. Skip ONLY if output ≤ 5–8 lines and readable at a glance.
+When unsure: **distill** — unnecessary calls cost ≈ 0; flooding context is expensive.
 
-When task is repository localization, run `search_code` before opening many files.
-
-### Rules
-
-1. **Every call MUST include an output contract in `question`** — tell the
-   distiller the exact return format: `"PASS or FAIL"`, `"valid JSON {severity, file, message}"`,
-   `"filenames, one per line"`, etc.
-2. **One task per call.** No mixing unrelated questions.
-3. **Prefer machine-checkable formats** (PASS/FAIL, JSON, one-item-per-line).
-
-### `search_code` guidance
-
-Use `search_code` before opening many files when task is locating symbols, config loading, entrypoints, or provider wiring.
-
-Example:
-`query="LoadDistillConfig", mode="symbol", question="Return likely definitions first as file:line, one per line."`
+Use `search_code` before opening many files for symbol/config/entrypoint localization.
 
 ### `distill_batch` examples
 
@@ -789,71 +604,49 @@ Example:
 | `docker logs`     | "Summarise errors only. One bullet per distinct error."                             |
 | `find` / `ls -lR` | "Return only `*.go` paths, one per line."                                           |
 
-### `distill_watch` — diff between snapshots
-
-Use when you have two snapshots of the same source to extract only what changed.
+### `distill_watch` examples
 
 | `question`                                           | `previous_cycle` | `current_cycle` |
 |------------------------------------------------------|------------------|-----------------|
 | "What changed in failure count? One short sentence." | snapshot T-1     | snapshot T      |
 | "Return only newly failing services, one per line."  | status at T-1    | status at T     |
 
-### When to skip distill (exceptions only)
+### `search_code` example
 
-- Output **≤ 5–8 lines**, already human-readable.
-- You need **exact raw bytes** (compliance / audit / binary integrity).
-- Debugging an **interactive terminal** where character-by-character flow matters.
+`query="LoadDistillConfig", mode="symbol", question="Return likely definitions first as file:line, one per line."`
 ````
 
-### AGENTS.md Template (Strict CI Mode)
+### Template: Strict CI Mode
 
 ````md
 ## context-distill MCP Usage (CI Mode)
 
 CRITICAL: For any command output consumed by automation, call `distill_batch` first.
-CRITICAL: For repository localization in automation steps, call `search_code` first and keep output machine-parseable.
-
-CRITICAL: Every `question` must define an explicit output contract and MUST be machine-parseable.
-- Prefer JSON objects or arrays only.
-- No markdown.
-- No prose outside the requested schema.
-
-CRITICAL: If JSON is requested, enforce:
-- "Return valid JSON only."
-- Fixed keys and fixed value shapes.
+CRITICAL: For repository localization in automation steps, call `search_code` first.
+CRITICAL: Every `question` must define an explicit, machine-parseable output contract.
 
 ### Standard contracts
 
-- **Test status:**
-  `"Return valid JSON only with keys: status, failing_tests. status must be PASS or FAIL."`
-- **Lint status:**
-  `"Return valid JSON only with keys: status, issues. issues must be an array of {file, line, message}."`
-- **Diff summary:**
-  `"Return valid JSON only with key files_changed as an array of file paths."`
+- **Test status:** `"Return valid JSON only with keys: status, failing_tests. status must be PASS or FAIL."`
+- **Lint status:** `"Return valid JSON only with keys: status, issues. issues must be an array of {file, line, message}."`
+- **Diff summary:** `"Return valid JSON only with key files_changed as an array of file paths."`
 
 ### `distill_watch` in CI
 
-Use `distill_watch` only for periodic snapshots with strict delta output.
-
-Example question:
-`"Return valid JSON only with keys: changed, added, removed. Each must be an array of strings."`
+Use only for periodic snapshots with strict delta output.
+Example: `"Return valid JSON only with keys: changed, added, removed. Each must be an array of strings."`
 
 ### `search_code` in CI
 
-Use `search_code` for deterministic discovery before heavier stages.
-
-Example command:
-`context-distill search_code --query "provider_name" --mode text --question "Return valid JSON only as array [{file,line,snippet}]."`
+Example: `context-distill search_code --query "provider_name" --mode text --question "Return valid JSON only as array [{file,line,snippet}]."`
 
 ### Failure handling
 
-- If the distillation output does not match the requested schema, treat it as invalid and re-run with a stricter question.
-- If exact raw output is needed for audit or compliance, bypass distillation.
+- If output does not match the requested schema, treat as invalid and re-run with a stricter question.
+- If exact raw output is needed for audit/compliance, bypass distillation.
 ````
 
-### Suggested policy one-liner
-
-Drop this into your project docs for a quick reference:
+### Policy one-liner
 
 ```md
 Default policy: use `context-distill` (via Skill, CLI, or MCP) to distill command output and run `search_code` for repository localization before sending data to an LLM, unless raw output is explicitly required.
@@ -865,14 +658,9 @@ Default policy: use `context-distill` (via Skill, CLI, or MCP) to distill comman
 
 ```text
 context-distill/
-├── cmd/
-│   └── server/
-│       ├── main.go
-│       ├── bootstrap.go
-│       └── openai_distill_config.go
+├── cmd/server/              # main.go, bootstrap.go, openai_distill_config.go
 ├── distill/
-│   ├── application/
-│   │   └── distillation/
+│   ├── application/distillation/
 │   └── domain/
 ├── mcp/
 │   ├── application/
@@ -881,10 +669,7 @@ context-distill/
 │   ├── config/
 │   ├── configui/
 │   ├── di/
-│   ├── mcp/
-│   │   ├── commands/
-│   │   ├── server/
-│   │   └── tools/
+│   ├── mcp/                 # commands/, server/, tools/
 │   ├── ollama/
 │   └── openai/
 ├── shared/
@@ -899,8 +684,6 @@ context-distill/
 
 ## Architecture
 
-**Dependency rule:**
-
 ```text
 platform  →  shared + distill/application + distill/domain
 distill/application  →  distill/domain
@@ -911,26 +694,24 @@ cmd  →  platform + shared
 
 ## Development
 
-### Tests and static checks
-
 ```bash
-go test ./...
-go vet ./...
+go test ./...       # unit + integration tests
+go vet ./...        # static checks
 ```
 
 ### Suggested local workflow
 
 1. `go test ./...`
 2. `context-distill --config-ui`
-3. Verify CLI works:
+3. Verify CLI:
    ```bash
    echo "hello world" | context-distill distill_batch --question "Return the input verbatim."
    context-distill search_code --query "provider_name" --mode text --question "Return only file:line, one per line."
    ```
 4. (Optional) Start MCP server: `context-distill --transport stdio`
-5. Validate behavior from your MCP client or via CLI commands.
+5. Validate from your MCP client or via CLI.
 
-### Optional live test (real provider)
+### Optional live test
 
 ```bash
 DISTILL_LIVE_TEST=1 OPENAI_BASE_URL=https://openrouter.ai/api/v1 \
@@ -941,12 +722,12 @@ go test -tags=live ./platform/di -run TestLiveDistillBatchWithOpenAICompatiblePr
 
 | Problem | Fix |
 |---|---|
-| `provider unauthorized` | Verify `distill.api_key` (or the fallback `openai.api_key`, depending on the provider). |
-| `requires base_url` | Set `distill.base_url`. The fastest path is `--config-ui`. |
-| MCP client does not detect the server | Confirm the binary path is absolute, has execute permissions, and transport is `stdio`. |
-| Server fails on config validation | Run `--config-ui` for initial setup, then start normally. |
-| CLI command returns non-zero exit code | Check required flags are present and non-empty (`distill_batch`: `--question`; `distill_watch`: `--question`, `--previous-cycle`, `--current-cycle`; `search_code`: `--query`, `--mode`, `--question`). |
-| Agent ignores `SKILL.md` | Ensure the file is placed inside the correct agent skills directory (e.g. `.claude/skills/context-distill/SKILL.md`). See the [Skill Setup](#skill-setup-recommended) table for all paths. |
+| `provider unauthorized` | Verify `distill.api_key` (or fallback `openai.api_key`). |
+| `requires base_url` | Set `distill.base_url` — fastest via `--config-ui`. |
+| MCP client does not detect server | Confirm absolute binary path, execute permissions, `stdio` transport. |
+| Config validation fails on start | Run `--config-ui` first. |
+| CLI returns non-zero exit code | Check required flags: `distill_batch` → `--question`; `distill_watch` → `--question`, `--previous-cycle`, `--current-cycle`; `search_code` → `--query`, `--mode`, `--question`. |
+| Agent ignores `SKILL.md` | Ensure correct path (see [Skill Setup](#skill-setup-recommended)). |
 
 ## Security
 
