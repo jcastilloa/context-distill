@@ -58,6 +58,41 @@ periodic polling) and only need to know what changed.
 - exact raw bytes are required (audit / compliance / binary integrity)
 - interactive terminal debugging needs character-by-character flow
 
+## Prerequisite check
+
+Before using `distill_mcp_output` for the first time in a session, confirm the binary
+is installed and has the subcommand. These commands are fast — no LLM call:
+
+```bash
+which context-distill                          # must return a path
+context-distill distill_mcp_output --help      # shows exact flags
+```
+
+> Skip if already confirmed earlier in the same session.
+
+## CLI reference — `distill_mcp_output` flags
+
+```
+Flags:
+  --server-command string    MCP server binary to invoke (e.g. "gaz-mcp")
+  --server-arg stringArray   Repeated flag for each server arg (e.g. --server-arg --transport --server-arg stdio)
+  --tool-name string         Tool name on the MCP server (e.g. "jenkins_build_log")
+  --tool-arguments string    JSON object with tool parameters (e.g. '{"environment":"production","job":"My Pipeline","build_number":42}')
+  --output string            Raw MCP payload to distill (use instead of server-command when you already have the output)
+  --question string          Output contract — what to return (REQUIRED)
+```
+
+**CLI example — extract errors from a Jenkins build log:**
+
+```bash
+context-distill distill_mcp_output \
+  --server-command gaz-mcp \
+  --server-arg --transport --server-arg stdio \
+  --tool-name jenkins_build_log \
+  --tool-arguments '{"environment":"production","job":"My Pipeline","build_number":42}' \
+  --question 'Return JSON: {result, root_cause, affected_specs}'
+```
+
 ## MCP tool: `distill_mcp_output`
 
 This is the key tool for the **agent → context-distill → MCP** pattern.
