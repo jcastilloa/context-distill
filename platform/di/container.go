@@ -7,6 +7,7 @@ import (
 	distillApp "github.com/jcastilloa/context-distill/distill/application/distillation"
 	distillDomain "github.com/jcastilloa/context-distill/distill/domain"
 	"github.com/jcastilloa/context-distill/platform/configui"
+	platformmcpclient "github.com/jcastilloa/context-distill/platform/mcp/client"
 	"github.com/jcastilloa/context-distill/platform/mcp/commands"
 	platformsearch "github.com/jcastilloa/context-distill/platform/mcp/search"
 	mcpserver "github.com/jcastilloa/context-distill/platform/mcp/server"
@@ -100,6 +101,13 @@ func (c *Container) Build() (*di.Container, error) {
 			},
 		},
 		di.Def{
+			Name:  DistillMCPInvokerLabel,
+			Scope: di.App,
+			Build: func(ctn di.Container) (interface{}, error) {
+				return platformmcpclient.NewStdioInvoker(), nil
+			},
+		},
+		di.Def{
 			Name:  DistillWatchUseCaseLabel,
 			Scope: di.App,
 			Build: func(ctn di.Container) (interface{}, error) {
@@ -107,6 +115,15 @@ func (c *Container) Build() (*di.Container, error) {
 				textPolicy := ctn.Get(DistillTextPolicyLabel).(distillDomain.TextPolicy)
 				summarizer := ctn.Get(DistillSummarizerRepositoryLabel).(distillDomain.SummarizerRepository)
 				return distillApp.NewDistillWatchUseCase(promptBuilder, textPolicy, summarizer), nil
+			},
+		},
+		di.Def{
+			Name:  DistillMCPOutputUseCaseLabel,
+			Scope: di.App,
+			Build: func(ctn di.Container) (interface{}, error) {
+				distillBatch := ctn.Get(DistillBatchUseCaseLabel).(*distillApp.DistillBatchUseCase)
+				invoker := ctn.Get(DistillMCPInvokerLabel).(distillApp.DistillMCPToolInvoker)
+				return distillApp.NewDistillMCPOutputUseCase(distillBatch, invoker), nil
 			},
 		},
 		di.Def{
@@ -146,6 +163,14 @@ func (c *Container) Build() (*di.Container, error) {
 			},
 		},
 		di.Def{
+			Name:  DistillMCPOutputToolLabel,
+			Scope: di.App,
+			Build: func(ctn di.Container) (interface{}, error) {
+				useCase := ctn.Get(DistillMCPOutputUseCaseLabel).(*distillApp.DistillMCPOutputUseCase)
+				return tools.NewDistillMCPOutput(useCase), nil
+			},
+		},
+		di.Def{
 			Name:  SearchCodeToolLabel,
 			Scope: di.App,
 			Build: func(ctn di.Container) (interface{}, error) {
@@ -167,9 +192,11 @@ func (c *Container) Build() (*di.Container, error) {
 				server := ctn.Get(MCPServerLabel).(*mcpserver.Server)
 				configUIRunner := ctn.Get(ConfigUIRunnerLabel).(commands.ConfigUIRunner)
 				distillBatchTool := ctn.Get(DistillBatchToolLabel).(tools.DistillBatch)
+				distillMCPOutputTool := ctn.Get(DistillMCPOutputToolLabel).(tools.DistillMCPOutput)
 				distillWatchTool := ctn.Get(DistillWatchToolLabel).(tools.DistillWatch)
 				searchCodeTool := ctn.Get(SearchCodeToolLabel).(tools.SearchCode)
 				distillBatchUseCase := ctn.Get(DistillBatchUseCaseLabel).(*distillApp.DistillBatchUseCase)
+				distillMCPOutputUseCase := ctn.Get(DistillMCPOutputUseCaseLabel).(*distillApp.DistillMCPOutputUseCase)
 				distillWatchUseCase := ctn.Get(DistillWatchUseCaseLabel).(*distillApp.DistillWatchUseCase)
 				searchCodeUseCase := ctn.Get(SearchCodeUseCaseLabel).(*distillApp.SearchCodeUseCase)
 				return commands.NewRunner(
@@ -181,7 +208,8 @@ func (c *Container) Build() (*di.Container, error) {
 					distillWatchTool,
 					distillBatchUseCase,
 					distillWatchUseCase,
-				).WithSearchCode(searchCodeTool, searchCodeUseCase), nil
+				).WithDistillMCPOutput(distillMCPOutputTool, distillMCPOutputUseCase).
+					WithSearchCode(searchCodeTool, searchCodeUseCase), nil
 			},
 		},
 	)

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -18,16 +19,18 @@ import (
 const RootCommandLabel = "mcp.root.command"
 
 type Runner struct {
-	serviceName         string
-	serviceCfg          configDomain.ServiceConfig
-	server              *mcpserver.Server
-	configUIRunner      ConfigUIRunner
-	distillBatchTool    tools.DistillBatch
-	distillWatchTool    tools.DistillWatch
-	searchCodeTool      tools.SearchCode
-	distillBatchUseCase DistillBatchCLIUseCase
-	distillWatchUseCase DistillWatchCLIUseCase
-	searchCodeUseCase   SearchCodeCLIUseCase
+	serviceName             string
+	serviceCfg              configDomain.ServiceConfig
+	server                  *mcpserver.Server
+	configUIRunner          ConfigUIRunner
+	distillBatchTool        tools.DistillBatch
+	distillMCPOutputTool    tools.DistillMCPOutput
+	distillWatchTool        tools.DistillWatch
+	searchCodeTool          tools.SearchCode
+	distillBatchUseCase     DistillBatchCLIUseCase
+	distillMCPOutputUseCase DistillMCPOutputCLIUseCase
+	distillWatchUseCase     DistillWatchCLIUseCase
+	searchCodeUseCase       SearchCodeCLIUseCase
 }
 
 type DistillBatchCLIUseCase interface {
@@ -36,6 +39,10 @@ type DistillBatchCLIUseCase interface {
 
 type DistillWatchCLIUseCase interface {
 	Execute(ctx context.Context, request distillapp.DistillWatchRequest) (distillapp.DistillWatchResult, error)
+}
+
+type DistillMCPOutputCLIUseCase interface {
+	Execute(ctx context.Context, request distillapp.DistillMCPOutputRequest) (distillapp.DistillMCPOutputResult, error)
 }
 
 type SearchCodeCLIUseCase interface {
@@ -70,6 +77,15 @@ func (r Runner) WithSearchCode(searchCodeTool tools.SearchCode, searchCodeUseCas
 	return r
 }
 
+func (r Runner) WithDistillMCPOutput(
+	distillMCPOutputTool tools.DistillMCPOutput,
+	distillMCPOutputUseCase DistillMCPOutputCLIUseCase,
+) Runner {
+	r.distillMCPOutputTool = distillMCPOutputTool
+	r.distillMCPOutputUseCase = distillMCPOutputUseCase
+	return r
+}
+
 func (r Runner) Execute() error {
 	return r.newRootCommand().Execute()
 }
@@ -94,6 +110,9 @@ func (r Runner) newRootCommand() *cobra.Command {
 	cmd.AddCommand(r.newVersionCommand())
 	cmd.AddCommand(r.newDistillBatchCommand())
 	cmd.AddCommand(r.newDistillWatchCommand())
+	if r.distillMCPOutputUseCase != nil {
+		cmd.AddCommand(r.newDistillMCPOutputCommand())
+	}
 	cmd.AddCommand(r.newSearchCodeCommand())
 	return cmd
 }
@@ -107,6 +126,9 @@ func (r Runner) runServer() func(cmd *cobra.Command, args []string) error {
 
 		r.server.AddTool(r.distillBatchTool.Definition(), r.distillBatchTool.Handler)
 		r.server.AddTool(r.distillWatchTool.Definition(), r.distillWatchTool.Handler)
+		if r.distillMCPOutputUseCase != nil {
+			r.server.AddTool(r.distillMCPOutputTool.Definition(), r.distillMCPOutputTool.Handler)
+		}
 		if r.searchCodeUseCase != nil {
 			r.server.AddTool(r.searchCodeTool.Definition(), r.searchCodeTool.Handler)
 		}
@@ -196,6 +218,51 @@ func (r Runner) newDistillWatchCommand() *cobra.Command {
 	return cmd
 }
 
+func (r Runner) newDistillMCPOutputCommand() *cobra.Command {
+	var question string
+	var toolName string
+	var output string
+	var serverCommand string
+	var serverArgs []string
+	var toolArguments string
+
+	cmd := &cobra.Command{
+		Use:   "distill_mcp_output",
+		Short: "Distill raw MCP tool output for one question",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			parsedToolArguments, err := parseJSONArgument(toolArguments)
+			if err != nil {
+				return err
+			}
+
+			result, err := r.distillMCPOutputUseCase.Execute(cmd.Context(), distillapp.DistillMCPOutputRequest{
+				Question:      question,
+				ToolName:      toolName,
+				Output:        output,
+				ServerCommand: serverCommand,
+				ServerArgs:    serverArgs,
+				ToolArguments: parsedToolArguments,
+			})
+			if err != nil {
+				return err
+			}
+
+			_, err = io.WriteString(cmd.OutOrStdout(), result.Output)
+			return err
+		},
+	}
+
+	cmd.Flags().StringVar(&question, "question", "", "Exact question to answer from the MCP output")
+	cmd.Flags().StringVar(&toolName, "tool-name", "", "Optional MCP tool name for extra context")
+	cmd.Flags().StringVar(&output, "output", "", "Raw MCP tool output payload to distill")
+	cmd.Flags().StringVar(&serverCommand, "server-command", "", "Optional MCP server command to invoke when output is omitted")
+	cmd.Flags().StringArrayVar(&serverArgs, "server-arg", []string{}, "Optional MCP server argument (repeat flag for multiple values)")
+	cmd.Flags().StringVar(&toolArguments, "tool-arguments", "", "Optional JSON object passed to the target MCP tool")
+	_ = cmd.MarkFlagRequired("question")
+
+	return cmd
+}
+
 func (r Runner) newSearchCodeCommand() *cobra.Command {
 	var query string
 	var mode string
@@ -274,4 +341,17 @@ func resolveIntFlagValue(cmd *cobra.Command, flagName, viperKey string, currentV
 		return currentValue
 	}
 	return viper.GetInt(viperKey)
+}
+
+func parseJSONArgument(raw string) (any, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+
+	var parsed any
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		return nil, fmt.Errorf("parse tool arguments json: %w", err)
+	}
+
+	return parsed, nil
 }

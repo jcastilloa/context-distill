@@ -122,6 +122,45 @@ distill:
 	}
 }
 
+func TestDistillMCPOutputToolIntegrationWithOpenAICompatibleProvider(t *testing.T) {
+	container := newContainerFromViperConfig(
+		t,
+		`service:
+  version: test
+distill:
+  provider_name: openai-compatible
+  base_url: http://127.0.0.1:9000/v1
+`,
+		scriptedAIRepository{responseText: "Edit Service"},
+	)
+
+	tool := (*container).Get(DistillMCPOutputToolLabel).(interface {
+		Handler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
+	})
+
+	result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"question":  "Return only job names.",
+			"tool_name": "jenkins_job_list",
+			"output":    `[{"type":"text","text":"[{\"name\":\"Edit Service\"}]"}]`,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("unexpected tool handler error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected successful tool result")
+	}
+
+	text, ok := mcp.AsTextContent(result.Content[0])
+	if !ok {
+		t.Fatalf("expected text content")
+	}
+	if text.Text != "Edit Service\n" {
+		t.Fatalf("unexpected distilled output: %q", text.Text)
+	}
+}
+
 func TestDistillBatchToolIntegrationReturnsToolErrorForValidation(t *testing.T) {
 	container := newContainerFromViperConfig(
 		t,

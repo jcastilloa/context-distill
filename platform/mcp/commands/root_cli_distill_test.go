@@ -40,6 +40,20 @@ func (u *fakeDistillWatchUseCase) Execute(_ context.Context, request distillapp.
 	return u.result, nil
 }
 
+type fakeDistillMCPOutputCLIUseCase struct {
+	request distillapp.DistillMCPOutputRequest
+	result  distillapp.DistillMCPOutputResult
+	err     error
+}
+
+func (u *fakeDistillMCPOutputCLIUseCase) Execute(_ context.Context, request distillapp.DistillMCPOutputRequest) (distillapp.DistillMCPOutputResult, error) {
+	u.request = request
+	if u.err != nil {
+		return distillapp.DistillMCPOutputResult{}, u.err
+	}
+	return u.result, nil
+}
+
 func TestRootCommandDistillBatchRunsUseCaseAndPrintsOutput(t *testing.T) {
 	batchUseCase := &fakeDistillBatchUseCase{result: distillapp.DistillBatchResult{Output: "PASS\n"}}
 	watchUseCase := &fakeDistillWatchUseCase{}
@@ -215,6 +229,57 @@ func TestRootCommandDistillBatchFlagInputTakesPrecedenceOverStdin(t *testing.T) 
 
 	if batchUseCase.request.Input != "flag data" {
 		t.Fatalf("expected flag input %q, got %q", "flag data", batchUseCase.request.Input)
+	}
+}
+
+func TestRootCommandDistillMCPOutputRunsUseCaseAndPrintsOutput(t *testing.T) {
+	mcpUseCase := &fakeDistillMCPOutputCLIUseCase{
+		result: distillapp.DistillMCPOutputResult{Output: "Edit Service\n"},
+	}
+	runner := NewRunner(
+		"context-distill",
+		configDomain.ServiceConfig{Version: "test", Transport: "stdio"},
+		nil,
+		&fakeConfigUIRunner{},
+		tools.DistillBatch{},
+		tools.DistillWatch{},
+		&fakeDistillBatchUseCase{},
+		&fakeDistillWatchUseCase{},
+	).WithDistillMCPOutput(tools.DistillMCPOutput{}, mcpUseCase)
+
+	stdout := &bytes.Buffer{}
+	cmd := runner.newRootCommand()
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{
+		"distill_mcp_output",
+		"--question", "Return only job names.",
+		"--tool-name", "jenkins_job_list",
+		"--output", `[{"type":"text","text":"[{\"name\":\"Edit Service\"}]"}]`,
+		"--server-command", "gaz-mcp",
+		"--server-arg", "--transport",
+		"--server-arg", "stdio",
+		"--tool-arguments", `{"environment":"development"}`,
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stdout.String() != "Edit Service\n" {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+	if mcpUseCase.request.ToolName != "jenkins_job_list" {
+		t.Fatalf("unexpected tool name: %q", mcpUseCase.request.ToolName)
+	}
+	if mcpUseCase.request.ServerCommand != "gaz-mcp" {
+		t.Fatalf("unexpected server command: %q", mcpUseCase.request.ServerCommand)
+	}
+	if len(mcpUseCase.request.ServerArgs) != 2 {
+		t.Fatalf("unexpected server args: %#v", mcpUseCase.request.ServerArgs)
+	}
+	args, ok := mcpUseCase.request.ToolArguments.(map[string]any)
+	if !ok || args["environment"] != "development" {
+		t.Fatalf("unexpected tool arguments: %#v", mcpUseCase.request.ToolArguments)
 	}
 }
 
