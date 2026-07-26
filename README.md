@@ -1,3 +1,5 @@
+![context-distill — A Context-Aware Text Summarization Library](assets/context-distill-header.png)
+
 # context-distill
 
 A Go tool that **distills command output and retrieves code context** before it reaches a paid LLM. Available as a **Skill** (recommended), a **standalone CLI**, and an **MCP server**. Inspired by the `distill` CLI and built with hexagonal architecture, dependency injection, and TDD.
